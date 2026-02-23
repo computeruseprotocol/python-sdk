@@ -243,33 +243,47 @@ class TestValidActions:
 # ---------------------------------------------------------------------------
 
 
-class TestMacosStub:
-    def test_execute_returns_not_implemented(self):
+class TestMacosHandler:
+    def test_execute_unknown_action(self):
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.execute(None, "click", {})
+        result = handler.execute(None, "fly", {})
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
-        assert "click" in result.error
+        assert "not implemented" in result.error.lower()
 
-    def test_press_keys_returns_not_implemented(self):
+    def test_press_keys_works(self):
+        """press_keys should succeed (sends CGEvent)."""
+        import sys
+        if sys.platform != "darwin":
+            pytest.skip("macOS-only test")
+
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.press_keys("ctrl+s")
-        assert result.success is False
-        assert "not yet implemented" in result.error.lower()
-        assert "ctrl+s" in result.error
+        result = handler.press_keys("escape")
+        assert result.success is True
+        assert "Pressed" in result.message
 
-    def test_launch_app_returns_not_implemented(self):
+    def test_launch_app_empty_name(self):
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.launch_app("chrome")
+        result = handler.launch_app("")
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
-        assert "chrome" in result.error
+        assert "empty" in result.error.lower()
+
+    def test_launch_app_no_match(self):
+        import sys
+        if sys.platform != "darwin":
+            pytest.skip("macOS-only test")
+
+        from cup.actions._macos import MacosActionHandler
+
+        handler = MacosActionHandler()
+        result = handler.launch_app("zzzznonexistentapp99999")
+        assert result.success is False
+        assert "no installed app" in result.error.lower()
 
 
 class TestLinuxStub:

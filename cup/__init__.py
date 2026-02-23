@@ -416,7 +416,12 @@ class Session:
     ) -> bytes:
         """Capture a screenshot and return PNG bytes.
 
-        Requires the ``mss`` package: ``pip install cup[screenshot]``
+        On macOS, uses the ``screencapture`` system utility and checks
+        Screen Recording permission upfront — raises RuntimeError with
+        a clear message if the permission is missing.
+
+        On other platforms, requires the ``mss`` package:
+        ``pip install cup[screenshot]``
 
         Args:
             region: Optional capture region {"x", "y", "w", "h"} in pixels.
@@ -424,7 +429,109 @@ class Session:
 
         Returns:
             PNG image bytes.
+
+        Raises:
+            RuntimeError: On macOS if Screen Recording permission is not
+                granted (System Settings > Privacy & Security > Screen Recording).
+            ImportError: On other platforms if ``mss`` is not installed.
         """
+        import sys
+
+        if sys.platform == "darwin":
+            return self._screenshot_macos(region)
+
+        return self._screenshot_mss(region)
+
+    def _screenshot_macos(self, region: dict[str, int] | None) -> bytes:
+        """macOS screenshot via the ``screencapture`` system utility.
+
+        All macOS screenshot APIs (mss, Quartz CGWindowListCreateImage,
+        and screencapture) return only the desktop wallpaper when the
+        calling process lacks Screen Recording permission. We detect
+        this upfront and raise a clear error instead of returning a
+        useless desktop-only image.
+        """
+        self._check_macos_screen_recording_permission()
+
+        import os
+        import subprocess
+        import tempfile
+
+        fd, tmp_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+
+        try:
+            cmd = ["screencapture", "-x"]  # -x = no sound
+
+            if region is not None:
+                cmd.extend([
+                    "-R",
+                    f"{region['x']},{region['y']},{region['w']},{region['h']}",
+                ])
+
+            cmd.append(tmp_path)
+
+            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            if result.returncode != 0:
+                stderr = result.stderr.decode(errors="replace").strip()
+                raise RuntimeError(
+                    f"screencapture failed (exit {result.returncode}): {stderr}"
+                )
+
+            with open(tmp_path, "rb") as f:
+                data = f.read()
+
+            if not data:
+                raise RuntimeError("screencapture produced an empty file")
+
+            return data
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    @staticmethod
+    def _check_macos_screen_recording_permission() -> None:
+        """Check if this process has Screen Recording permission.
+
+        Without it, all screenshot APIs silently return only the desktop
+        wallpaper with no application windows visible. We detect this by
+        checking if CGWindowListCopyWindowInfo returns any window names —
+        macOS strips them when the process lacks permission.
+
+        If permission is missing, we call CGRequestScreenCaptureAccess()
+        to trigger the system prompt and raise a clear error.
+        """
+        from Quartz import (
+            CGWindowListCopyWindowInfo,
+            kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+        )
+
+        windows = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+        )
+
+        # If any window has a name, we have permission
+        has_permission = any(w.get("kCGWindowName") for w in (windows or []))
+
+        if not has_permission:
+            # Trigger the macOS permission prompt
+            try:
+                from Quartz import CGRequestScreenCaptureAccess
+                CGRequestScreenCaptureAccess()
+            except ImportError:
+                pass
+
+            raise RuntimeError(
+                "Screen Recording permission is required for screenshots. "
+                "Grant it to this app in: System Settings > Privacy & Security "
+                "> Screen Recording. You may need to restart the app after granting."
+            )
+
+    def _screenshot_mss(self, region: dict[str, int] | None) -> bytes:
+        """Fallback screenshot via mss (Windows/Linux)."""
         try:
             import mss
             import mss.tools

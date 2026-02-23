@@ -336,6 +336,63 @@ def _macos_screen_info() -> tuple[int, int, float]:
 # Window enumeration
 # ---------------------------------------------------------------------------
 
+# Process names that are macOS system daemons with on-screen layer-0 windows
+# but should NOT appear in user-facing app lists.
+_SYSTEM_OWNER_NAMES = frozenset({
+    "WindowServer",
+    "Dock",
+    "SystemUIServer",
+    "Control Center",
+    "Notification Center",
+    "loginwindow",
+    "Window Manager",
+    "Spotlight",
+})
+
+
+def _cg_window_apps() -> dict[int, str]:
+    """Return {pid: owner_name} for processes with on-screen, normal-layer windows.
+
+    Uses CGWindowListCopyWindowInfo which always returns fresh data from the
+    window server, unlike NSWorkspace.runningApplications() which can be stale
+    in a long-running process without an NSRunLoop.
+    """
+    try:
+        from Quartz import (
+            CGWindowListCopyWindowInfo,
+            kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+        )
+
+        cg_windows = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+        )
+        if not cg_windows:
+            return {}
+
+        result: dict[int, str] = {}
+        for w in cg_windows:
+            # Only normal-level windows (layer 0 = kCGNormalWindowLevel).
+            # Filters out menus, tooltips, overlays, screensavers, etc.
+            layer = w.get("kCGWindowLayer", -1)
+            if layer != 0:
+                continue
+
+            pid = w.get("kCGWindowOwnerPID")
+            owner = w.get("kCGWindowOwnerName", "")
+            if not pid or not owner:
+                continue
+
+            if owner in _SYSTEM_OWNER_NAMES:
+                continue
+
+            if pid not in result:
+                result[pid] = owner
+
+        return result
+    except Exception:
+        return {}
+
 
 def _macos_foreground_app() -> tuple[int, str, str | None]:
     """Return (pid, app_name, bundle_id) of the frontmost application."""
@@ -349,18 +406,35 @@ def _macos_foreground_app() -> tuple[int, str, str | None]:
 
 
 def _macos_visible_apps() -> list[tuple[int, str, str | None]]:
-    """Return [(pid, app_name, bundle_id)] for all visible (regular) apps."""
+    """Return [(pid, app_name, bundle_id)] for all visible (regular) apps.
+
+    Combines NSWorkspace.runningApplications() (provides bundle_id and
+    activation policy) with CGWindowListCopyWindowInfo (always fresh from
+    the window server) to ensure newly launched apps are not missed due to
+    stale NSRunLoop state.
+    """
     workspace = NSWorkspace.sharedWorkspace()
     apps = []
+    seen_pids: set[int] = set()
+
     for app in workspace.runningApplications():
         if app.activationPolicy() == NSApplicationActivationPolicyRegular:
+            pid = app.processIdentifier()
             apps.append(
                 (
-                    app.processIdentifier(),
+                    pid,
                     app.localizedName() or "",
                     app.bundleIdentifier(),
                 )
             )
+            seen_pids.add(pid)
+
+    # Cross-check: find apps with visible windows that NSWorkspace missed
+    for pid, owner_name in _cg_window_apps().items():
+        if pid not in seen_pids:
+            apps.append((pid, owner_name, None))
+            seen_pids.add(pid)
+
     return apps
 
 
