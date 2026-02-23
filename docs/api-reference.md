@@ -186,7 +186,7 @@ png_bytes = session.screenshot()
 png_bytes = session.screenshot(region={"x": 100, "y": 200, "w": 800, "h": 600})
 ```
 
-Requires: `pip install cup[screenshot]`
+Requires: `pip install computer-use-protocol[screenshot]`
 
 **Parameters:**
 - `region` (dict | None) — Capture region `{"x", "y", "w", "h"}` in pixels. `None` for full primary monitor.

@@ -11,7 +11,7 @@
 <br>
 
 <p align="center">
-  <a href="https://pypi.org/project/cup"><img src="https://img.shields.io/pypi/v/cup?style=for-the-badge&color=FF6F61&labelColor=000000" alt="PyPI"></a>
+  <a href="https://pypi.org/project/computer-use-protocol"><img src="https://img.shields.io/pypi/v/computer-use-protocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="PyPI"></a>
   <a href="https://github.com/computeruseprotocol/python-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0cc0df?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
   <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
 </p>
@@ -21,16 +21,16 @@ The official Python SDK for the [Computer Use Protocol (CUP)](https://github.com
 ## Installation
 
 ```bash
-pip install cup
+pip install computer-use-protocol
 
 # Linux additionally requires system packages
 sudo apt install python3-gi gir1.2-atspi-2.0
 
 # Web adapter (Chrome DevTools Protocol, works on any OS)
-pip install cup[web]
+pip install computer-use-protocol[web]
 
 # MCP server for AI agent integration
-pip install cup[mcp]
+pip install computer-use-protocol[mcp]
 ```
 
 ## Quick start
