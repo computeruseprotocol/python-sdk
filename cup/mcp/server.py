@@ -1,6 +1,6 @@
 """CUP MCP Server — Computer Use Protocol tools for AI agents.
 
-Exposes simple, focused tools for UI tree capture, element search,
+Exposes simple, focused tools for UI tree snapshot, element search,
 action execution, and screenshots.
 """
 
@@ -20,27 +20,27 @@ mcp = FastMCP(
         "CUP (Computer Use Protocol) gives you access to the UI accessibility "
         "tree of the user's computer.\n\n"
         "WORKFLOW — follow this pattern:\n"
-        "1. get_foreground to capture the active window's UI\n"
-        "2. find_element to locate specific elements (PREFERRED over re-capturing)\n"
-        "3. execute_action to interact (click, type, press_keys, etc.)\n"
+        "1. snapshot to capture the active window's UI\n"
+        "2. find to locate specific elements (PREFERRED over re-capturing)\n"
+        "3. action to interact (click, type, press, etc.)\n"
         "4. Re-capture ONLY after actions change the UI\n\n"
         "TOOLS:\n"
-        "- get_foreground() — active window tree + window list (most common)\n"
-        "- get_tree(app) — specific app by title (when not in foreground)\n"
-        "- get_overview() — just the window list, near-instant\n"
-        "- get_desktop() — desktop icons and widgets\n"
-        "- find_element(role/name/state) — search last tree without re-capturing\n"
-        "- execute_action(action, ...) — interact with elements or press keys\n"
-        "- launch_app(name) — launch an app by name with fuzzy matching\n"
+        "- snapshot() — active window tree + window list (most common)\n"
+        "- snapshot_app(app) — specific app by title (when not in foreground)\n"
+        "- overview() — just the window list, near-instant\n"
+        "- snapshot_desktop() — desktop icons and widgets\n"
+        "- find(role/name/state) — search last tree without re-capturing\n"
+        "- action(action, ...) — interact with elements or press keys\n"
+        "- open_app(name) — open an app by name with fuzzy matching\n"
         "- screenshot(region) — visual context when tree isn't enough\n\n"
         "IMPORTANT — minimize token usage:\n"
-        "- Use find_element(name=...) to locate elements — NOT repeated tree captures\n"
-        "- Use get_overview() to discover what apps are open\n"
-        "- Use get_tree(app='...') to target a specific app\n"
-        "- get_foreground() is your default starting point\n\n"
+        "- Use find(name=...) to locate elements — NOT repeated tree captures\n"
+        "- Use overview() to discover what apps are open\n"
+        "- Use snapshot_app(app='...') to target a specific app\n"
+        "- snapshot() is your default starting point\n\n"
         "Element IDs (e.g., 'e14') are ephemeral — only valid for the most "
         "recent tree snapshot. After any action, re-capture before using IDs.\n\n"
-        "Use execute_action(action='press_keys', keys='ctrl+s') for keyboard shortcuts.\n\n"
+        "Use action(action='press', keys='ctrl+s') for keyboard shortcuts.\n\n"
         "Use screenshot when you need visual context (colors, images, layout)."
     ),
 )
@@ -65,11 +65,11 @@ def _get_session() -> cup.Session:
 
 
 @mcp.tool()
-def get_foreground() -> str:
+def snapshot() -> str:
     """Capture the foreground (active) window's accessibility tree.
 
     Returns a structured text representation where each UI element has an ID
-    (e.g., 'e14') that can be used with execute_action. The format shows:
+    (e.g., 'e14') that can be used with the action tool. The format shows:
 
         [id] role "name" @x,y wxh {states} [actions] val="value"
 
@@ -82,7 +82,7 @@ def get_foreground() -> str:
     After executing any action, you MUST call this again for fresh IDs.
     """
     session = _get_session()
-    return session.capture(
+    return session.snapshot(
         scope="foreground",
         max_depth=999,
         compact=True,
@@ -91,7 +91,7 @@ def get_foreground() -> str:
 
 
 @mcp.tool()
-def get_tree(app: str) -> str:
+def snapshot_app(app: str) -> str:
     """Capture a specific app's window accessibility tree by title.
 
     Use this when you need to interact with a window that is NOT in the
@@ -100,8 +100,8 @@ def get_tree(app: str) -> str:
     The 'app' parameter is a case-insensitive substring match against
     window titles (e.g., "Spotify", "Firefox", "VS Code").
 
-    Returns the same compact format as get_foreground, with element IDs
-    that can be used with execute_action.
+    Returns the same compact format as snapshot, with element IDs
+    that can be used with the action tool.
 
     Element IDs are ephemeral — only valid for THIS snapshot.
 
@@ -109,7 +109,7 @@ def get_tree(app: str) -> str:
         app: Target app by window title (case-insensitive substring match).
     """
     session = _get_session()
-    return session.capture(
+    return session.snapshot(
         scope="full",
         app=app,
         max_depth=999,
@@ -119,18 +119,18 @@ def get_tree(app: str) -> str:
 
 
 @mcp.tool()
-def get_desktop() -> str:
+def snapshot_desktop() -> str:
     """Capture the desktop surface (icons, widgets, shortcuts).
 
     Use this to see and interact with desktop items. Falls back to a
     window overview if the platform has no desktop concept.
 
-    Returns the same compact format with element IDs for execute_action.
+    Returns the same compact format with element IDs for the action tool.
 
     Element IDs are ephemeral — only valid for THIS snapshot.
     """
     session = _get_session()
-    return session.capture(
+    return session.snapshot(
         scope="desktop",
         max_depth=999,
         compact=True,
@@ -139,17 +139,17 @@ def get_desktop() -> str:
 
 
 @mcp.tool()
-def get_overview() -> str:
+def overview() -> str:
     """List all open windows. Near-instant, no tree walking.
 
     Returns a lightweight window list showing app names, PIDs, and bounds.
     No element IDs are returned (no tree walking is performed).
 
     Use this to quickly discover what apps are open before targeting
-    a specific one with get_tree(app='...').
+    a specific one with snapshot_app(app='...').\n
     """
     session = _get_session()
-    return session.capture(scope="overview", compact=True)
+    return session.snapshot(scope="overview", compact=True)
 
 
 # ---------------------------------------------------------------------------
@@ -158,17 +158,17 @@ def get_overview() -> str:
 
 
 @mcp.tool()
-def execute_action(
+def action(
     action: str,
     element_id: str | None = None,
     value: str | None = None,
     direction: str | None = None,
     keys: str | None = None,
 ) -> str:
-    """Execute an action on a UI element or send a keyboard shortcut.
+    """Perform an action on a UI element or send a keyboard shortcut.
 
-    IMPORTANT: Element IDs are only valid from the most recent tree capture
-    (get_foreground, get_tree, etc.). After executing any action, re-capture
+    IMPORTANT: Element IDs are only valid from the most recent tree snapshot
+    (snapshot, snapshot_app, etc.). After performing any action, re-capture
     for fresh IDs.
 
     Element actions (require element_id):
@@ -187,31 +187,31 @@ def execute_action(
         focus      — Move keyboard focus to the element
 
     Keyboard shortcut (no element_id needed):
-        press_keys — Send a keyboard shortcut (pass combo in 'keys')
+        press      — Send a keyboard shortcut (pass combo in 'keys')
                      Examples: "enter", "ctrl+s", "ctrl+shift+p", "alt+f4"
 
     Args:
         action: The action to perform.
         element_id: Element ID from the tree (e.g., "e14"). Required for
-                    all actions except press_keys.
+                    all actions except press.
         value: Text for 'type' or 'setvalue' actions.
         direction: Direction for 'scroll' action (up/down/left/right).
-        keys: Key combination for 'press_keys' action (e.g., "ctrl+s").
+        keys: Key combination for 'press' action (e.g., "ctrl+s").
     """
     session = _get_session()
 
-    # Handle press_keys action
-    if action == "press_keys":
+    # Handle press action
+    if action == "press":
         if not keys:
             return json.dumps(
                 {
                     "success": False,
                     "message": "",
-                    "error": "press_keys action requires the 'keys' parameter "
+                    "error": "press action requires the 'keys' parameter "
                     "(e.g., keys='ctrl+s').",
                 }
             )
-        result = session.press_keys(keys)
+        result = session.press(keys)
         return json.dumps(
             {
                 "success": result.success,
@@ -237,7 +237,7 @@ def execute_action(
     if direction is not None:
         params["direction"] = direction
 
-    result = session.execute(element_id, action, **params)
+    result = session.action(element_id, action, **params)
 
     return json.dumps(
         {
@@ -249,13 +249,13 @@ def execute_action(
 
 
 # ---------------------------------------------------------------------------
-# Launch app tool
+# Open app tool
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-def launch_app(name: str) -> str:
-    """Launch an application by name.
+def open_app(name: str) -> str:
+    """Open an application by name.
 
     Fuzzy-matches the name against installed apps on the system.
     Examples: "chrome" → Google Chrome, "code" → Visual Studio Code,
@@ -263,13 +263,13 @@ def launch_app(name: str) -> str:
 
     Waits for the app window to appear before returning success.
 
-    After launching, use get_foreground() to capture the new app's UI tree.
+    After opening, use snapshot() to capture the new app's UI tree.
 
     Args:
-        name: Application name to launch (fuzzy matched against installed apps).
+        name: Application name to open (fuzzy matched against installed apps).
     """
     session = _get_session()
-    result = session.launch_app(name)
+    result = session.open_app(name)
     return json.dumps(
         {
             "success": result.success,
@@ -285,7 +285,7 @@ def launch_app(name: str) -> str:
 
 
 @mcp.tool()
-def find_element(
+def find(
     query: str | None = None,
     role: str | None = None,
     name: str | None = None,
@@ -335,7 +335,7 @@ def find_element(
         )
 
     session = _get_session()
-    matches = session.find_elements(query=query, role=role, name=name, state=state)
+    matches = session.find(query=query, role=role, name=name, state=state)
 
     if not matches:
         return json.dumps(

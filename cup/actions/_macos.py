@@ -502,7 +502,7 @@ def _fuzzy_match(
 class MacosActionHandler(ActionHandler):
     """Execute CUP actions on macOS via AXUIElement API + Quartz CGEvents."""
 
-    def execute(
+    def action(
         self,
         native_ref: Any,
         action: str,
@@ -550,7 +550,7 @@ class MacosActionHandler(ActionHandler):
                 error=f"Action '{action}' not implemented for macOS",
             )
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         try:
             _send_key_combo(combo)
             return ActionResult(success=True, message=f"Pressed {combo}")
@@ -843,9 +843,9 @@ class MacosActionHandler(ActionHandler):
             error="Element has no bounds for long-press",
         )
 
-    # -- launch_app --------------------------------------------------------
+    # -- open_app ----------------------------------------------------------
 
-    def launch_app(self, name: str) -> ActionResult:
+    def open_app(self, name: str) -> ActionResult:
         """Launch a macOS application by name with fuzzy matching."""
         if not name or not name.strip():
             return ActionResult(

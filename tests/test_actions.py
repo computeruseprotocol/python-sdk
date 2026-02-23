@@ -113,20 +113,20 @@ class TestActionExecutor:
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_unknown_element(self):
+    def test_action_unknown_element(self):
         try:
             exe = ActionExecutor(_MockAdapter())
-            result = exe.execute("e999", "click")
+            result = exe.action("e999", "click")
             assert result.success is False
             assert "not found" in result.error.lower()
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_unknown_action(self):
+    def test_action_unknown_action(self):
         try:
             exe = ActionExecutor(_MockAdapter())
             exe.set_refs({"e0": "fake"})
-            result = exe.execute("e0", "fly")
+            result = exe.action("e0", "fly")
             assert result.success is False
             assert "Unknown action" in result.error
         except (ImportError, OSError):
@@ -147,61 +147,61 @@ class TestActionExecutor:
     # Valid actions match schema
     # ---------------------------------------------------------------------------
 
-    def test_execute_type_without_value_rejected(self):
+    def test_action_type_without_value_rejected(self):
         try:
             exe = ActionExecutor(_MockAdapter())
             exe.set_refs({"e0": "fake"})
-            result = exe.execute("e0", "type")
+            result = exe.action("e0", "type")
             assert result.success is False
             assert "requires a 'value' parameter" in result.error
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_setvalue_without_value_rejected(self):
+    def test_action_setvalue_without_value_rejected(self):
         try:
             exe = ActionExecutor(_MockAdapter())
             exe.set_refs({"e0": "fake"})
-            result = exe.execute("e0", "setvalue")
+            result = exe.action("e0", "setvalue")
             assert result.success is False
             assert "requires a 'value' parameter" in result.error
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_scroll_without_direction_rejected(self):
+    def test_action_scroll_without_direction_rejected(self):
         try:
             exe = ActionExecutor(_MockAdapter())
             exe.set_refs({"e0": "fake"})
-            result = exe.execute("e0", "scroll")
+            result = exe.action("e0", "scroll")
             assert result.success is False
             assert "requires 'direction'" in result.error
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_scroll_invalid_direction_rejected(self):
+    def test_action_scroll_invalid_direction_rejected(self):
         try:
             exe = ActionExecutor(_MockAdapter())
             exe.set_refs({"e0": "fake"})
-            result = exe.execute("e0", "scroll", {"direction": "sideways"})
+            result = exe.action("e0", "scroll", {"direction": "sideways"})
             assert result.success is False
             assert "requires 'direction'" in result.error
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_press_keys_without_keys_rejected(self):
+    def test_action_press_without_keys_rejected(self):
         try:
             exe = ActionExecutor(_MockAdapter())
-            result = exe.execute("", "press_keys", {})
+            result = exe.action("", "press", {})
             assert result.success is False
             assert "keys" in result.error.lower()
         except (ImportError, OSError):
             pytest.skip("Windows-only: comtypes not available")
 
-    def test_execute_press_keys_skips_element_lookup(self):
-        """press_keys should not fail with 'not found in tree' even with empty refs."""
+    def test_action_press_skips_element_lookup(self):
+        """press should not fail with 'not found in tree' even with empty refs."""
         try:
             exe = ActionExecutor(_MockAdapter())
-            # refs are empty — press_keys should NOT check refs
-            result = exe.execute("", "press_keys", {"keys": "ctrl+s"})
+            # refs are empty — press should NOT check refs
+            result = exe.action("", "press", {"keys": "ctrl+s"})
             # It will either succeed or fail for platform reasons,
             # but must NOT fail with "not found in current tree snapshot"
             if result.error:
@@ -227,7 +227,7 @@ class TestValidActions:
             "focus",
             "increment",
             "longpress",
-            "press_keys",
+            "press",
             "rightclick",
             "scroll",
             "select",
@@ -244,16 +244,16 @@ class TestValidActions:
 
 
 class TestMacosHandler:
-    def test_execute_unknown_action(self):
+    def test_action_unknown_action(self):
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.execute(None, "fly", {})
+        result = handler.action(None, "fly", {})
         assert result.success is False
         assert "not implemented" in result.error.lower()
 
-    def test_press_keys_works(self):
-        """press_keys should succeed (sends CGEvent)."""
+    def test_press_works(self):
+        """press should succeed (sends CGEvent)."""
         import sys
         if sys.platform != "darwin":
             pytest.skip("macOS-only test")
@@ -261,19 +261,19 @@ class TestMacosHandler:
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.press_keys("escape")
+        result = handler.press("escape")
         assert result.success is True
         assert "Pressed" in result.message
 
-    def test_launch_app_empty_name(self):
+    def test_open_app_empty_name(self):
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.launch_app("")
+        result = handler.open_app("")
         assert result.success is False
         assert "empty" in result.error.lower()
 
-    def test_launch_app_no_match(self):
+    def test_open_app_no_match(self):
         import sys
         if sys.platform != "darwin":
             pytest.skip("macOS-only test")
@@ -281,38 +281,34 @@ class TestMacosHandler:
         from cup.actions._macos import MacosActionHandler
 
         handler = MacosActionHandler()
-        result = handler.launch_app("zzzznonexistentapp99999")
+        result = handler.open_app("zzzznonexistentapp99999")
         assert result.success is False
         assert "no installed app" in result.error.lower()
 
 
-class TestLinuxStub:
-    def test_execute_returns_not_implemented(self):
+class TestLinuxHandler:
+    def test_action_fails_gracefully_without_element(self):
         from cup.actions._linux import LinuxActionHandler
 
         handler = LinuxActionHandler()
-        result = handler.execute(None, "click", {})
+        result = handler.action(None, "click", {})
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
-        assert "click" in result.error
 
-    def test_press_keys_returns_not_implemented(self):
+    def test_press_fails_without_display(self):
         from cup.actions._linux import LinuxActionHandler
 
         handler = LinuxActionHandler()
-        result = handler.press_keys("ctrl+s")
+        result = handler.press("ctrl+s")
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
         assert "ctrl+s" in result.error
 
-    def test_launch_app_returns_not_implemented(self):
+    def test_open_app_empty_name(self):
         from cup.actions._linux import LinuxActionHandler
 
         handler = LinuxActionHandler()
-        result = handler.launch_app("firefox")
+        result = handler.open_app("")
         assert result.success is False
-        assert "not yet implemented" in result.error.lower()
-        assert "firefox" in result.error
+        assert "empty" in result.error.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -321,11 +317,11 @@ class TestLinuxStub:
 
 
 class TestWebStub:
-    def test_launch_app_returns_not_applicable(self):
+    def test_open_app_returns_not_applicable(self):
         from cup.actions._web import WebActionHandler
 
         handler = WebActionHandler()
-        result = handler.launch_app("chrome")
+        result = handler.open_app("chrome")
         assert result.success is False
         assert "not applicable" in result.error.lower()
 

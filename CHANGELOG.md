@@ -14,11 +14,11 @@ Initial release. Extracted from [computeruseprotocol/computer-use-protocol](http
   - macOS (AXUIElement via pyobjc)
   - Linux (AT-SPI2 via PyGObject)
   - Web (Chrome DevTools Protocol)
-- **Action execution** on Windows and Web platforms (macOS and Linux planned)
-- **MCP server** (`cup-mcp`) with 7 tools for AI agent integration
+- **Action execution** on all four platforms (Windows, macOS, Linux, Web)
+- **MCP server** (`cup-mcp`) with 8 tools for AI agent integration
 - **Semantic search engine** with fuzzy matching, role synonyms, and relevance ranking
 - **Viewport-aware pruning** that clips offscreen nodes using nested scrollable container intersection
-- **Session API** with `capture()`, `execute()`, `press_keys()`, `find_elements()`, `batch_execute()`, and `screenshot()`
+- **Session API** with `snapshot()`, `action()`, `press()`, `find()`, `batch()`, and `screenshot()`
 - **CLI** (`python -m cup`) for tree capture, JSON export, and compact output
 - **CI** with GitHub Actions running tests on Windows, macOS, and Linux
 

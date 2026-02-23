@@ -532,7 +532,7 @@ class LinuxActionHandler(ActionHandler):
       - xdotool (optional, for reliable Unicode typing)
     """
 
-    def execute(
+    def action(
         self,
         native_ref: Any,
         action: str,
@@ -580,7 +580,7 @@ class LinuxActionHandler(ActionHandler):
                 error=f"Action '{action}' not implemented for Linux",
             )
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         try:
             _send_key_combo(combo)
             return ActionResult(success=True, message=f"Pressed {combo}")
@@ -911,9 +911,9 @@ class LinuxActionHandler(ActionHandler):
             error="Element has no bounds for long-press",
         )
 
-    # -- launch_app --------------------------------------------------------
+    # -- open_app ----------------------------------------------------------
 
-    def launch_app(self, name: str) -> ActionResult:
+    def open_app(self, name: str) -> ActionResult:
         """Launch a Linux application by name with fuzzy matching.
 
         Discovers installed apps from .desktop files in XDG data directories,

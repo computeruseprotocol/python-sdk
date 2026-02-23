@@ -38,15 +38,15 @@ pip install computer-use-protocol[mcp]
 ```python
 import cup
 
-# Full accessibility tree as a CUP envelope (dict)
-envelope = cup.get_tree()
+# Snapshot the foreground window — optimized for LLM context windows
+screen = cup.snapshot()
+print(screen)
 
-# Just the foreground window
-envelope = cup.get_foreground_tree()
+# All windows
+screen = cup.snapshot("full")
 
-# Compact text format — optimized for LLM context windows
-text = cup.get_compact()
-print(text)
+# Structured CUP envelope (dict) instead of compact text
+envelope = cup.snapshot_raw()
 ```
 
 Output (compact format):
@@ -85,8 +85,8 @@ python -m cup --platform web --cdp-port 9222 --compact
 | Platform | Adapter | Tree Capture | Actions |
 |----------|---------|-------------|---------|
 | Windows | UIA COM (comtypes) | Stable | Stable |
-| macOS | AXUIElement (pyobjc) | Stable | Planned |
-| Linux | AT-SPI2 (PyGObject) | Stable | Planned |
+| macOS | AXUIElement (pyobjc) | Stable | Stable |
+| Linux | AT-SPI2 (PyGObject) | Stable | Stable |
 | Web | Chrome DevTools Protocol | Stable | Stable |
 | Android | | Planned | Planned |
 | iOS | | Planned | Planned |
@@ -97,7 +97,7 @@ CUP auto-detects your platform. Platform-specific dependencies (comtypes on Wind
 
 ```
 cup/
-├── __init__.py                 # Public API: get_tree, get_compact, ...
+├── __init__.py                 # Public API: snapshot, action, find, ...
 ├── __main__.py                 # CLI entry point
 ├── _base.py                    # Abstract PlatformAdapter interface
 ├── _router.py                  # Platform detection & adapter dispatch
@@ -107,8 +107,8 @@ cup/
 │   ├── executor.py             # ActionExecutor orchestrator
 │   ├── _windows.py             # Windows UIA actions
 │   ├── _web.py                 # Chrome CDP actions
-│   ├── _macos.py               # macOS actions (planned)
-│   └── _linux.py               # Linux actions (planned)
+│   ├── _macos.py               # macOS actions (Quartz CGEvents + AX)
+│   └── _linux.py               # Linux actions (XTest + AT-SPI2)
 ├── platforms/                  # Platform-specific tree capture
 │   ├── windows.py              # Windows UIA adapter
 │   ├── macos.py                # macOS AXUIElement adapter
@@ -145,7 +145,7 @@ Add to your MCP client config (e.g., `.mcp.json` for Claude Code):
 }
 ```
 
-**Tools:** `get_foreground`, `get_tree`, `get_overview`, `get_desktop`, `find_element`, `execute_action`, `launch_app`, `screenshot`
+**Tools:** `snapshot`, `snapshot_app`, `overview`, `snapshot_desktop`, `find`, `action`, `open_app`, `screenshot`
 
 ## Documentation
 
@@ -158,7 +158,6 @@ CUP is in early development (v0.1.0). Contributions welcome — especially:
 
 - Android adapter (`cup/platforms/android.py`)
 - iOS adapter (`cup/platforms/ios.py`)
-- macOS / Linux action execution
 - Tests and CI across platforms
 
 For protocol or schema changes, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).

@@ -763,7 +763,7 @@ class TestOutputTruncation:
         text = serialize_compact(env, max_chars=2000)
         assert len(text) <= 2500  # some overhead for truncation message
         assert "OUTPUT TRUNCATED" in text
-        assert "find_element" in text
+        assert "find(name=" in text
 
     def test_output_not_truncated_under_limit(self):
         """Small output should not be truncated."""

@@ -15,12 +15,12 @@ session = cup.Session(platform=None)
 
 ---
 
-### session.capture()
+### session.snapshot()
 
 Capture the accessibility tree.
 
 ```python
-result = session.capture(
+result = session.snapshot(
     scope="foreground",   # "overview" | "foreground" | "desktop" | "full"
     app=None,             # filter by window title (scope="full" only)
     max_depth=999,        # maximum tree depth
@@ -50,18 +50,18 @@ result = session.capture(
 
 ---
 
-### session.execute()
+### session.action()
 
-Execute an action on an element from the last capture.
+Perform an action on an element from the last snapshot.
 
 ```python
-result = session.execute("e14", "click")
-result = session.execute("e5", "type", value="hello world")
-result = session.execute("e9", "scroll", direction="down")
+result = session.action("e14", "click")
+result = session.action("e5", "type", value="hello world")
+result = session.action("e9", "scroll", direction="down")
 ```
 
 **Parameters:**
-- `element_id` (str) — Element ID from the tree (e.g., `"e14"`). Only valid for the most recent capture.
+- `element_id` (str) — Element ID from the tree (e.g., `"e14"`). Only valid for the most recent snapshot.
 - `action` (str) — One of the canonical actions below.
 - `**params` — Action-specific parameters.
 
@@ -70,19 +70,20 @@ result = session.execute("e9", "scroll", direction="down")
 | Action | Parameters | Description |
 |--------|-----------|-------------|
 | `click` | — | Click/invoke the element |
+| `collapse` | — | Collapse an expanded element |
+| `decrement` | — | Decrement a slider/spinbutton |
+| `dismiss` | — | Dismiss a dialog/popup |
 | `doubleclick` | — | Double-click |
+| `expand` | — | Expand a collapsed element |
+| `focus` | — | Move keyboard focus to the element |
+| `increment` | — | Increment a slider/spinbutton |
+| `longpress` | — | Long-press (touch/mobile interaction) |
 | `rightclick` | — | Right-click (context menu) |
-| `type` | `value: str` | Type text into a field |
+| `scroll` | `direction: str` | Scroll container (`up`/`down`/`left`/`right`) |
+| `select` | — | Select an item in a list/tree/tab |
 | `setvalue` | `value: str` | Set element value programmatically |
 | `toggle` | — | Toggle checkbox or switch |
-| `expand` | — | Expand a collapsed element |
-| `collapse` | — | Collapse an expanded element |
-| `select` | — | Select an item in a list/tree/tab |
-| `increment` | — | Increment a slider/spinbutton |
-| `decrement` | — | Decrement a slider/spinbutton |
-| `scroll` | `direction: str` | Scroll container (`up`/`down`/`left`/`right`) |
-| `focus` | — | Move keyboard focus to the element |
-| `dismiss` | — | Dismiss a dialog/popup |
+| `type` | `value: str` | Type text into a field |
 
 **Returns:** `ActionResult`
 
@@ -96,14 +97,14 @@ class ActionResult:
 
 ---
 
-### session.press_keys()
+### session.press()
 
 Send a keyboard shortcut.
 
 ```python
-result = session.press_keys("ctrl+s")
-result = session.press_keys("alt+f4")
-result = session.press_keys("enter")
+result = session.press("ctrl+s")
+result = session.press("alt+f4")
+result = session.press("enter")
 ```
 
 **Parameters:**
@@ -111,14 +112,14 @@ result = session.press_keys("enter")
 
 ---
 
-### session.launch_app()
+### session.open_app()
 
-Launch an application by name with fuzzy matching.
+Open an application by name with fuzzy matching.
 
 ```python
-result = session.launch_app("chrome")     # → Google Chrome
-result = session.launch_app("code")       # → Visual Studio Code
-result = session.launch_app("notepad")    # → Notepad
+result = session.open_app("chrome")     # → Google Chrome
+result = session.open_app("code")       # → Visual Studio Code
+result = session.open_app("notepad")    # → Notepad
 ```
 
 **Parameters:**
@@ -128,14 +129,14 @@ result = session.launch_app("notepad")    # → Notepad
 
 ---
 
-### session.find_elements()
+### session.find()
 
 Search the last captured tree without re-capturing.
 
 ```python
-results = session.find_elements(query="play button")
-results = session.find_elements(role="textbox", state="focused")
-results = session.find_elements(name="Submit")
+results = session.find(query="play button")
+results = session.find(role="textbox", state="focused")
+results = session.find(name="Submit")
 ```
 
 **Parameters:**
@@ -149,16 +150,16 @@ results = session.find_elements(name="Submit")
 
 ---
 
-### session.batch_execute()
+### session.batch()
 
 Execute a sequence of actions, stopping on first failure.
 
 ```python
-results = session.batch_execute([
+results = session.batch([
     {"element_id": "e3", "action": "click"},
     {"action": "wait", "ms": 500},
     {"element_id": "e7", "action": "type", "value": "hello"},
-    {"action": "press_keys", "keys": "enter"},
+    {"action": "press", "keys": "enter"},
 ])
 ```
 
@@ -170,7 +171,7 @@ results = session.batch_execute([
 | `element_id` | For element actions | Target element |
 | `value` | For `type`/`setvalue` | Text value |
 | `direction` | For `scroll` | Scroll direction |
-| `keys` | For `press_keys` | Key combination |
+| `keys` | For `press` | Key combination |
 | `ms` | For `wait` | Delay in ms (50-5000) |
 
 **Returns:** List of `ActionResult` — stops at first failure.
@@ -202,27 +203,27 @@ Thin wrappers around a default `Session` instance. Useful for quick scripting.
 ```python
 import cup
 
-# Full tree as CUP envelope dict
-envelope = cup.get_tree(max_depth=999)
+# Foreground window as compact text (the default)
+text = cup.snapshot()
+
+# All windows as compact text
+text = cup.snapshot("full")
 
 # Foreground window as CUP envelope dict
-envelope = cup.get_foreground_tree(max_depth=999)
+envelope = cup.snapshot_raw()
 
-# Full tree as compact text
-text = cup.get_compact(max_depth=999)
-
-# Foreground window as compact text
-text = cup.get_foreground_compact(max_depth=999)
+# All windows as CUP envelope dict
+envelope = cup.snapshot_raw("full")
 
 # Window list only (no tree walking)
-text = cup.get_overview()
+text = cup.overview()
 ```
 
 ---
 
 ## CUP Envelope Format
 
-The JSON envelope returned by `session.capture(compact=False)`:
+The JSON envelope returned by `session.snapshot(compact=False)`:
 
 ```json
 {
@@ -256,15 +257,17 @@ Each node in the tree:
 
 **Roles:** 54 ARIA-derived roles. See [schema/mappings.json](../schema/mappings.json) for the full list and per-platform mappings.
 
-**States:** `checked`, `disabled`, `expanded`, `focused`, `hidden`, `modal`, `multiselectable`, `offscreen`, `pressed`, `readonly`, `required`, `selected`, `busy`, `current`, `grabbed`, `invalid`
+**States:** `busy`, `checked`, `collapsed`, `disabled`, `editable`, `expanded`, `focused`, `hidden`, `mixed`, `modal`, `multiselectable`, `offscreen`, `pressed`, `readonly`, `required`, `selected`
 
-**Actions:** `click`, `collapse`, `decrement`, `dismiss`, `doubleclick`, `expand`, `focus`, `increment`, `longpress`, `press_keys`, `rightclick`, `scroll`, `select`, `setvalue`, `toggle`, `type`
+**Element actions:** `click`, `collapse`, `decrement`, `dismiss`, `doubleclick`, `expand`, `focus`, `increment`, `longpress`, `rightclick`, `scroll`, `select`, `setvalue`, `toggle`, `type`
+
+**Session-level actions:** `press`
 
 ---
 
 ## Compact Format
 
-The text format returned by `session.capture(compact=True)`. Optimized for LLM context windows (~75% smaller than JSON).
+The text format returned by `session.snapshot(compact=True)`. Optimized for LLM context windows (~75% smaller than JSON).
 
 ```
 # CUP 0.1.0 | windows | 2560x1440
@@ -300,13 +303,13 @@ python -m cup.mcp
 
 | Tool | Description |
 |------|-------------|
-| `get_foreground()` | Capture active window tree (compact) |
-| `get_tree(app)` | Capture specific app by title |
-| `get_overview()` | Window list only (near-instant) |
-| `get_desktop()` | Desktop surface (icons, widgets) |
-| `find_element(query, role, name, state)` | Search last tree |
-| `execute_action(action, element_id, ...)` | Execute action + return new tree |
-| `launch_app(name)` | Launch app by name |
+| `snapshot()` | Capture active window tree (compact) |
+| `snapshot_app(app)` | Capture specific app by title |
+| `overview()` | Window list only (near-instant) |
+| `snapshot_desktop()` | Desktop surface (icons, widgets) |
+| `find(query, role, name, state)` | Search last tree |
+| `action(action, element_id, ...)` | Perform action on element |
+| `open_app(name)` | Open app by name |
 | `screenshot(region)` | Capture screenshot |
 
 ### Configuration

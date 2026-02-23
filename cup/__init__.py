@@ -7,20 +7,20 @@ Quick start::
 
     import cup
 
-    # Session is the primary API — capture + actions
+    # Session is the primary API — snapshot + actions
     session = cup.Session()
-    tree = session.capture(scope="overview")    # window list only
-    tree = session.capture(scope="foreground")  # foreground tree + window header
-    tree = session.capture(scope="desktop")     # desktop items
-    result = session.execute("e14", "click")
-    tree = session.capture(scope="foreground")  # re-capture after action
+    tree = session.snapshot(scope="overview")    # window list only
+    tree = session.snapshot(scope="foreground")  # foreground tree + window header
+    tree = session.snapshot(scope="desktop")     # desktop items
+    result = session.action("e14", "click")
+    tree = session.snapshot(scope="foreground")  # re-snapshot after action
 
     # Convenience functions (use a default session internally)
-    envelope = cup.get_tree()                   # full tree as CUP envelope dict
-    envelope = cup.get_foreground_tree()        # foreground window only
-    text = cup.get_compact()                    # compact text for LLM context
-    text = cup.get_foreground_compact()         # foreground compact text
-    text = cup.get_overview()                   # lightweight window list
+    text = cup.snapshot()                        # foreground compact text (the default)
+    text = cup.snapshot("full")                  # all windows compact text
+    raw = cup.snapshot_raw()                     # foreground as CUP envelope dict
+    raw = cup.snapshot_raw("full")               # all windows as CUP envelope dict
+    text = cup.overview()                        # lightweight window list
 """
 
 from __future__ import annotations
@@ -40,11 +40,9 @@ from cup.format import (
 Scope = Literal["overview", "foreground", "desktop", "full"]
 
 __all__ = [
-    "get_tree",
-    "get_foreground_tree",
-    "get_compact",
-    "get_foreground_compact",
-    "get_overview",
+    "snapshot",
+    "snapshot_raw",
+    "overview",
     "Session",
     "Scope",
     "ActionResult",
@@ -77,45 +75,37 @@ def _get_default_session() -> Session:
 # ---------------------------------------------------------------------------
 
 
-def get_tree(*, max_depth: int = 999) -> dict:
-    """Capture the full accessibility tree (all windows) as a CUP envelope dict."""
-    return _get_default_session().capture(
-        scope="full",
-        max_depth=max_depth,
-        compact=False,
-    )
+def snapshot(scope: Scope = "foreground", *, max_depth: int = 999) -> str:
+    """Capture the screen as LLM-optimized compact text.
 
-
-def get_foreground_tree(*, max_depth: int = 999) -> dict:
-    """Capture the foreground window's tree as a CUP envelope dict."""
-    return _get_default_session().capture(
-        scope="foreground",
-        max_depth=max_depth,
-        compact=False,
-    )
-
-
-def get_compact(*, max_depth: int = 999) -> str:
-    """Capture full tree and return CUP compact text (for LLM context)."""
-    return _get_default_session().capture(
-        scope="full",
+    Args:
+        scope: What to capture — "foreground" (default), "full", "desktop", or "overview".
+        max_depth: Maximum tree depth.
+    """
+    return _get_default_session().snapshot(
+        scope=scope,
         max_depth=max_depth,
         compact=True,
     )
 
 
-def get_foreground_compact(*, max_depth: int = 999) -> str:
-    """Capture foreground window and return CUP compact text (for LLM context)."""
-    return _get_default_session().capture(
-        scope="foreground",
+def snapshot_raw(scope: Scope = "foreground", *, max_depth: int = 999) -> dict:
+    """Capture the screen as a structured CUP envelope dict.
+
+    Args:
+        scope: What to capture — "foreground" (default), "full", "desktop", or "overview".
+        max_depth: Maximum tree depth.
+    """
+    return _get_default_session().snapshot(
+        scope=scope,
         max_depth=max_depth,
-        compact=True,
+        compact=False,
     )
 
 
-def get_overview() -> str:
-    """Get a compact window list (no tree walking). Near-instant."""
-    return _get_default_session().capture(scope="overview", compact=True)
+def overview() -> str:
+    """List all open windows (no tree walking). Near-instant."""
+    return _get_default_session().snapshot(scope="overview", compact=True)
 
 
 # ---------------------------------------------------------------------------
@@ -133,10 +123,10 @@ class Session:
     Example::
 
         session = cup.Session()
-        overview = session.capture(scope="overview")    # what's running?
-        tree = session.capture(scope="foreground")      # interact with app
-        result = session.execute("e7", "click")
-        tree = session.capture(scope="foreground")      # fresh IDs after action
+        overview = session.snapshot(scope="overview")    # what's running?
+        tree = session.snapshot(scope="foreground")      # interact with app
+        result = session.action("e7", "click")
+        tree = session.snapshot(scope="foreground")      # fresh IDs after action
     """
 
     def __init__(self, *, platform: str | None = None) -> None:
@@ -145,7 +135,7 @@ class Session:
         self._last_tree: list[dict] | None = None
         self._last_raw_tree: list[dict] | None = None
 
-    def capture(
+    def snapshot(
         self,
         *,
         scope: Scope = "foreground",
@@ -271,31 +261,31 @@ class Session:
             )
         return envelope
 
-    def execute(
+    def action(
         self,
         element_id: str,
         action: str,
         **params: Any,
     ) -> ActionResult:
-        """Execute an action on an element from the last capture.
+        """Perform an action on an element from the last snapshot.
 
         Args:
             element_id: Element ID from the tree (e.g., "e14").
             action: CUP canonical action (click, type, toggle, etc.).
             **params: Action parameters (value, direction, etc.).
         """
-        return self._executor.execute(element_id, action, params)
+        return self._executor.action(element_id, action, params)
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         """Send a keyboard shortcut to the focused window.
 
         Args:
             combo: Key combination (e.g., "ctrl+s", "enter", "alt+f4").
         """
-        return self._executor.press_keys(combo)
+        return self._executor.press(combo)
 
-    def launch_app(self, name: str) -> ActionResult:
-        """Launch an application by name.
+    def open_app(self, name: str) -> ActionResult:
+        """Open an application by name.
 
         Fuzzy-matches against installed apps (e.g., "chrome" matches
         "Google Chrome", "code" matches "Visual Studio Code").
@@ -304,11 +294,11 @@ class Session:
         Args:
             name: Application name (fuzzy matched).
         """
-        return self._executor.launch_app(name)
+        return self._executor.open_app(name)
 
-    # -- find_elements -----------------------------------------------------
+    # -- find ---------------------------------------------------------------
 
-    def find_elements(
+    def find(
         self,
         *,
         query: str | None = None,
@@ -333,7 +323,7 @@ class Session:
             List of matching CUP node dicts (without children), ranked by relevance.
         """
         if self._last_raw_tree is None:
-            self.capture(scope="foreground", compact=True)
+            self.snapshot(scope="foreground", compact=True)
 
         from cup.search import search_tree
 
@@ -347,9 +337,9 @@ class Session:
         )
         return [r.node for r in results]
 
-    # -- batch_execute -----------------------------------------------------
+    # -- batch --------------------------------------------------------------
 
-    def batch_execute(
+    def batch(
         self,
         actions: list[dict[str, Any]],
     ) -> list[ActionResult]:
@@ -358,7 +348,7 @@ class Session:
         Each action spec is a dict with either:
             {"element_id": "e14", "action": "click"}
             {"element_id": "e5", "action": "type", "value": "hello"}
-            {"action": "press_keys", "keys": "ctrl+s"}
+            {"action": "press", "keys": "ctrl+s"}
             {"action": "wait", "ms": 500}
 
         Returns:
@@ -375,18 +365,18 @@ class Session:
                 ms = max(50, min(int(spec.get("ms", 500)), 5000))
                 time.sleep(ms / 1000)
                 result = ActionResult(success=True, message=f"Waited {ms}ms")
-            elif action == "press_keys":
+            elif action == "press":
                 keys = spec.get("keys", "")
                 if not keys:
                     results.append(
                         ActionResult(
                             success=False,
                             message="",
-                            error="press_keys action requires 'keys' parameter",
+                            error="press action requires 'keys' parameter",
                         )
                     )
                     break
-                result = self.press_keys(keys)
+                result = self.press(keys)
             else:
                 element_id = spec.get("element_id", "")
                 if not element_id:
@@ -399,7 +389,7 @@ class Session:
                     )
                     break
                 params = {k: v for k, v in spec.items() if k not in ("element_id", "action")}
-                result = self.execute(element_id, action, **params)
+                result = self.action(element_id, action, **params)
 
             results.append(result)
             if not result.success:

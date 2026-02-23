@@ -16,7 +16,7 @@ class ActionHandler(ABC):
     """
 
     @abstractmethod
-    def execute(
+    def action(
         self,
         native_ref: Any,
         action: str,
@@ -35,7 +35,7 @@ class ActionHandler(ABC):
         ...
 
     @abstractmethod
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         """Send a keyboard combination to the focused window.
 
         Args:
@@ -47,14 +47,14 @@ class ActionHandler(ABC):
         ...
 
     @abstractmethod
-    def launch_app(self, name: str) -> ActionResult:
-        """Launch an application by name.
+    def open_app(self, name: str) -> ActionResult:
+        """Open an application by name.
 
         Implementations should discover installed apps, fuzzy-match the
         name, launch the best match, and confirm the window appeared.
 
         Args:
-            name: Application name to launch (fuzzy matched).
+            name: Application name to open (fuzzy matched).
 
         Returns:
             ActionResult with success status and message.

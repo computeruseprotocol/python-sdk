@@ -1,31 +1,31 @@
-"""Tests for batch_execute functionality."""
+"""Tests for batch functionality."""
 
 from __future__ import annotations
 
 from cup.actions.executor import ActionResult
 
 # ---------------------------------------------------------------------------
-# Batch execution logic (mirrors Session.batch_execute without needing an adapter)
+# Batch logic (mirrors Session.batch without needing an adapter)
 # ---------------------------------------------------------------------------
 
 
-def _batch_execute(actions, execute_fn, press_keys_fn):
-    """Simulate Session.batch_execute with injected action functions."""
+def _batch(actions, action_fn, press_fn):
+    """Simulate Session.batch with injected action functions."""
     results = []
     for spec in actions:
         action = spec.get("action", "")
-        if action == "press_keys":
+        if action == "press":
             keys = spec.get("keys", "")
             if not keys:
                 results.append(
                     ActionResult(
                         success=False,
                         message="",
-                        error="press_keys action requires 'keys' parameter",
+                        error="press action requires 'keys' parameter",
                     )
                 )
                 break
-            result = press_keys_fn(keys)
+            result = press_fn(keys)
         else:
             element_id = spec.get("element_id", "")
             if not element_id:
@@ -38,7 +38,7 @@ def _batch_execute(actions, execute_fn, press_keys_fn):
                 )
                 break
             params = {k: v for k, v in spec.items() if k not in ("element_id", "action")}
-            result = execute_fn(element_id, action, **params)
+            result = action_fn(element_id, action, **params)
         results.append(result)
         if not result.success:
             break
@@ -49,16 +49,16 @@ _ok = lambda msg="OK": ActionResult(success=True, message=msg)
 _fail = lambda err="Failed": ActionResult(success=False, message="", error=err)
 
 
-class TestBatchExecute:
+class TestBatch:
     def test_all_succeed(self):
-        results = _batch_execute(
+        results = _batch(
             [
                 {"element_id": "e1", "action": "click"},
-                {"action": "press_keys", "keys": "enter"},
+                {"action": "press", "keys": "enter"},
                 {"element_id": "e2", "action": "type", "value": "hello"},
             ],
-            execute_fn=lambda eid, action, **p: _ok(f"{action} {eid}"),
-            press_keys_fn=lambda keys: _ok(f"Pressed {keys}"),
+            action_fn=lambda eid, action, **p: _ok(f"{action} {eid}"),
+            press_fn=lambda keys: _ok(f"Pressed {keys}"),
         )
         assert len(results) == 3
         assert all(r.success for r in results)
@@ -66,20 +66,20 @@ class TestBatchExecute:
     def test_stops_on_first_failure(self):
         call_count = [0]
 
-        def execute(eid, action, **params):
+        def do_action(eid, action, **params):
             call_count[0] += 1
             if eid == "e2":
                 return _fail("Not found")
             return _ok()
 
-        results = _batch_execute(
+        results = _batch(
             [
                 {"element_id": "e1", "action": "click"},
                 {"element_id": "e2", "action": "click"},  # fails
                 {"element_id": "e3", "action": "click"},  # never reached
             ],
-            execute_fn=execute,
-            press_keys_fn=lambda keys: _ok(),
+            action_fn=do_action,
+            press_fn=lambda keys: _ok(),
         )
         assert len(results) == 2
         assert results[0].success is True
@@ -87,28 +87,28 @@ class TestBatchExecute:
         assert call_count[0] == 2
 
     def test_empty_actions_list(self):
-        results = _batch_execute(
+        results = _batch(
             [],
-            execute_fn=lambda *a, **k: _ok(),
-            press_keys_fn=lambda *a: _ok(),
+            action_fn=lambda *a, **k: _ok(),
+            press_fn=lambda *a: _ok(),
         )
         assert results == []
 
-    def test_press_keys_without_keys_param(self):
-        results = _batch_execute(
-            [{"action": "press_keys"}],
-            execute_fn=lambda *a, **k: _ok(),
-            press_keys_fn=lambda *a: _ok(),
+    def test_press_without_keys_param(self):
+        results = _batch(
+            [{"action": "press"}],
+            action_fn=lambda *a, **k: _ok(),
+            press_fn=lambda *a: _ok(),
         )
         assert len(results) == 1
         assert results[0].success is False
         assert "keys" in results[0].error.lower()
 
     def test_element_action_without_element_id(self):
-        results = _batch_execute(
+        results = _batch(
             [{"action": "click"}],
-            execute_fn=lambda *a, **k: _ok(),
-            press_keys_fn=lambda *a: _ok(),
+            action_fn=lambda *a, **k: _ok(),
+            press_fn=lambda *a: _ok(),
         )
         assert len(results) == 1
         assert results[0].success is False
@@ -117,40 +117,40 @@ class TestBatchExecute:
     def test_params_forwarded(self):
         received = {}
 
-        def execute(eid, action, **params):
+        def do_action(eid, action, **params):
             received.update(params)
             return _ok()
 
-        _batch_execute(
+        _batch(
             [{"element_id": "e1", "action": "type", "value": "hello"}],
-            execute_fn=execute,
-            press_keys_fn=lambda *a: _ok(),
+            action_fn=do_action,
+            press_fn=lambda *a: _ok(),
         )
         assert received == {"value": "hello"}
 
-    def test_mixed_element_and_press_keys(self):
+    def test_mixed_element_and_press(self):
         log = []
 
-        def execute(eid, action, **params):
-            log.append(("execute", eid, action))
+        def do_action(eid, action, **params):
+            log.append(("action", eid, action))
             return _ok()
 
-        def press_keys(keys):
-            log.append(("press_keys", keys))
+        def press(keys):
+            log.append(("press", keys))
             return _ok()
 
-        results = _batch_execute(
+        results = _batch(
             [
                 {"element_id": "e1", "action": "click"},
-                {"action": "press_keys", "keys": "tab"},
+                {"action": "press", "keys": "tab"},
                 {"element_id": "e2", "action": "type", "value": "world"},
             ],
-            execute_fn=execute,
-            press_keys_fn=press_keys,
+            action_fn=do_action,
+            press_fn=press,
         )
         assert len(results) == 3
         assert log == [
-            ("execute", "e1", "click"),
-            ("press_keys", "tab"),
-            ("execute", "e2", "type"),
+            ("action", "e1", "click"),
+            ("press", "tab"),
+            ("action", "e2", "type"),
         ]

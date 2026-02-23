@@ -14,7 +14,7 @@ Usage:
 
     # Or via API:
     import cup
-    envelope = cup.get_tree(platform="web")
+    text = cup.snapshot("full")
 
 Dependencies:
     pip install websocket-client

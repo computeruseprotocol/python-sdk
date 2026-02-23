@@ -21,7 +21,7 @@ VALID_ACTIONS = frozenset(
         "focus",
         "increment",
         "longpress",
-        "press_keys",
+        "press",
         "rightclick",
         "scroll",
         "select",
@@ -74,7 +74,7 @@ class ActionExecutor:
         executor = ActionExecutor(adapter)
         tree, stats, refs = adapter.capture_tree(windows)
         executor.set_refs(refs)
-        result = executor.execute("e14", "click")
+        result = executor.action("e14", "click")
     """
 
     def __init__(self, adapter: PlatformAdapter) -> None:
@@ -86,7 +86,7 @@ class ActionExecutor:
         """Replace element references with a fresh set from capture_tree()."""
         self._refs = refs
 
-    def execute(
+    def action(
         self,
         element_id: str,
         action: str,
@@ -106,16 +106,16 @@ class ActionExecutor:
                 error=f"Unknown action '{action}'. Valid: {sorted(VALID_ACTIONS)}",
             )
 
-        # press_keys does not require an element reference
-        if action == "press_keys":
+        # press does not require an element reference
+        if action == "press":
             keys = (params or {}).get("keys", "")
             if not keys:
                 return ActionResult(
                     success=False,
                     message="",
-                    error="Action 'press_keys' requires a 'keys' parameter",
+                    error="Action 'press' requires a 'keys' parameter",
                 )
-            return self.press_keys(keys)
+            return self.press(keys)
 
         if element_id not in self._refs:
             return ActionResult(
@@ -143,20 +143,20 @@ class ActionExecutor:
 
         native_ref = self._refs[element_id]
         try:
-            return self._handler.execute(native_ref, action, params or {})
+            return self._handler.action(native_ref, action, params or {})
         except Exception as exc:
             return ActionResult(success=False, message="", error=str(exc))
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         """Send a keyboard shortcut (e.g., 'ctrl+s', 'enter')."""
         try:
-            return self._handler.press_keys(combo)
+            return self._handler.press(combo)
         except Exception as exc:
             return ActionResult(success=False, message="", error=str(exc))
 
-    def launch_app(self, name: str) -> ActionResult:
-        """Launch an application by name with fuzzy matching."""
+    def open_app(self, name: str) -> ActionResult:
+        """Open an application by name with fuzzy matching."""
         try:
-            return self._handler.launch_app(name)
+            return self._handler.open_app(name)
         except Exception as exc:
             return ActionResult(success=False, message="", error=str(exc))

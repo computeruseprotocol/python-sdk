@@ -1,4 +1,4 @@
-"""Tests for semantic find_elements search logic."""
+"""Tests for semantic find search logic."""
 
 from __future__ import annotations
 
@@ -557,7 +557,7 @@ class TestLimit:
 
 
 # ---------------------------------------------------------------------------
-# _format_line for find_element MCP output
+# _format_line for find MCP output
 # ---------------------------------------------------------------------------
 
 

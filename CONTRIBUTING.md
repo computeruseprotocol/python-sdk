@@ -54,7 +54,6 @@ High-impact areas where contributions are especially useful:
 
 - **Android adapter** (`cup/platforms/android.py`) — ADB + AccessibilityNodeInfo
 - **iOS adapter** (`cup/platforms/ios.py`) — XCUITest accessibility
-- **macOS / Linux action execution** — currently tree capture only
 - **Tests** — especially cross-platform integration tests
 - **Documentation** — tutorials, examples, API reference improvements
 

@@ -86,7 +86,7 @@ class WebActionHandler(ActionHandler):
     def __init__(self, *, cdp_host: str | None = None):
         self._host = cdp_host or os.environ.get("CUP_CDP_HOST", "127.0.0.1")
 
-    def execute(
+    def action(
         self,
         native_ref: Any,
         action: str,
@@ -107,7 +107,7 @@ class WebActionHandler(ActionHandler):
         finally:
             _cdp_close(ws)
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         """Send a keyboard shortcut via CDP Input.dispatchKeyEvent.
 
         This sends to the currently focused element in the most recently
@@ -126,7 +126,7 @@ class WebActionHandler(ActionHandler):
             return ActionResult(
                 success=False,
                 message="",
-                error=f"Cannot connect to CDP for press_keys: {exc}",
+                error=f"Cannot connect to CDP for press: {exc}",
             )
 
         page_targets = [t for t in targets if t.get("type") == "page"]
@@ -134,7 +134,7 @@ class WebActionHandler(ActionHandler):
             return ActionResult(
                 success=False,
                 message="",
-                error="No browser tabs found for press_keys",
+                error="No browser tabs found for press",
             )
 
         ws_url = page_targets[0]["webSocketDebuggerUrl"]
@@ -547,9 +547,9 @@ class WebActionHandler(ActionHandler):
                     },
                 )
 
-    def launch_app(self, name: str) -> ActionResult:
+    def open_app(self, name: str) -> ActionResult:
         return ActionResult(
             success=False,
             message="",
-            error="launch_app is not applicable for web platform",
+            error="open_app is not applicable for web platform",
         )

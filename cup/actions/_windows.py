@@ -392,7 +392,7 @@ class WindowsActionHandler(ActionHandler):
         _ensure_pattern_interfaces()
         self._initialized = True
 
-    def execute(
+    def action(
         self,
         native_ref: Any,
         action: str,
@@ -441,7 +441,7 @@ class WindowsActionHandler(ActionHandler):
                 error=f"Action '{action}' not implemented for Windows",
             )
 
-    def press_keys(self, combo: str) -> ActionResult:
+    def press(self, combo: str) -> ActionResult:
         _send_key_combo(combo)
         return ActionResult(success=True, message=f"Pressed {combo}")
 
@@ -665,9 +665,9 @@ class WindowsActionHandler(ActionHandler):
                 error=f"Failed to long-press: {exc}",
             )
 
-    # -- launch_app ------------------------------------------------------------
+    # -- open_app --------------------------------------------------------------
 
-    def launch_app(self, name: str) -> ActionResult:
+    def open_app(self, name: str) -> ActionResult:
         """Launch a Windows application by name with fuzzy matching."""
         if not name or not name.strip():
             return ActionResult(
@@ -841,7 +841,7 @@ class WindowsActionHandler(ActionHandler):
 
 
 # ---------------------------------------------------------------------------
-# launch_app helpers
+# open_app helpers
 # ---------------------------------------------------------------------------
 
 

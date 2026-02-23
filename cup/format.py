@@ -133,10 +133,10 @@ def _should_skip(node: dict, parent: dict | None, siblings: int) -> bool:
     # Scrollbar: the parent container already has [scroll] — agents never
     #   click scrollbar thumbs/tracks.
     # Separator: pure visual decoration, no semantic content.
-    # Titlebar: minimize/maximize/close — agents use press_keys instead.
+    # Titlebar: minimize/maximize/close — agents use press instead.
     # Tooltip: transient flyouts, rarely actionable.
     # Status: read-only info (line numbers, encoding, git branch) — agents
-    #   can still find these via find_element on the raw tree if needed.
+    #   can still find these via find on the raw tree if needed.
     if role in _CHROME_ROLES:
         return True
 
@@ -572,8 +572,8 @@ def serialize_compact(
             truncated = truncated[:last_nl]
         truncated += (
             "\n\n# OUTPUT TRUNCATED — exceeded character limit.\n"
-            "# Use find_element(name=...) to locate specific elements instead.\n"
-            "# Or use get_tree(app='<title>') to target a specific window.\n"
+            "# Use find(name=...) to locate specific elements instead.\n"
+            "# Or use snapshot_app(app='<title>') to target a specific window.\n"
         )
         return truncated
 
