@@ -395,7 +395,50 @@ def _cg_window_apps() -> dict[int, str]:
 
 
 def _macos_foreground_app() -> tuple[int, str, str | None]:
-    """Return (pid, app_name, bundle_id) of the frontmost application."""
+    """Return (pid, app_name, bundle_id) of the frontmost application.
+
+    Uses CGWindowListCopyWindowInfo to get fresh data from the window server.
+    NSWorkspace.frontmostApplication() goes stale in long-running processes
+    without an active NSRunLoop (e.g., MCP servers), so we only use it as a
+    fallback.
+    """
+    # CGWindowList returns windows in front-to-back order. The first
+    # layer-0 (normal) window that isn't a system daemon is the frontmost app.
+    try:
+        from Quartz import (
+            CGWindowListCopyWindowInfo,
+            kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+        )
+
+        cg_windows = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+        )
+        if cg_windows:
+            for w in cg_windows:
+                if w.get("kCGWindowLayer", -1) != 0:
+                    continue
+                pid = w.get("kCGWindowOwnerPID")
+                owner = w.get("kCGWindowOwnerName", "")
+                if not pid or not owner:
+                    continue
+                if owner in _SYSTEM_OWNER_NAMES:
+                    continue
+                # Found the frontmost app — look up bundle ID via NSRunningApplication
+                bundle_id = None
+                try:
+                    from AppKit import NSRunningApplication
+                    ns_app = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+                    if ns_app is not None:
+                        owner = ns_app.localizedName() or owner
+                        bundle_id = ns_app.bundleIdentifier()
+                except Exception:
+                    pass
+                return (pid, owner, bundle_id)
+    except Exception:
+        pass
+
+    # Fallback: NSWorkspace (may be stale without NSRunLoop)
     workspace = NSWorkspace.sharedWorkspace()
     app = workspace.frontmostApplication()
     return (

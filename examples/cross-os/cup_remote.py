@@ -25,6 +25,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -143,6 +144,26 @@ class RemoteSession:
         limit: int = 5,
     ) -> list[dict]:
         return self._call("find", query=query, role=role, name=name, state=state, limit=limit)
+
+    def snapshot_desktop(self, *, compact: bool = True) -> str | dict:
+        return self._call("snapshot_desktop", compact=compact)
+
+    def screenshot(
+        self,
+        *,
+        region: dict[str, int] | None = None,
+    ) -> bytes:
+        """Capture a screenshot and return PNG bytes."""
+        params: dict[str, Any] = {}
+        if region is not None:
+            params["region_x"] = region["x"]
+            params["region_y"] = region["y"]
+            params["region_w"] = region["w"]
+            params["region_h"] = region["h"]
+        result = self._call("screenshot", **params)
+        if not result.get("success"):
+            raise RuntimeError(result.get("error", "Screenshot failed"))
+        return base64.b64decode(result["data"])
 
     def open_app(self, name: str) -> ActionResult:
         result = self._call("open_app", name=name)

@@ -9,14 +9,14 @@ This demonstrates CUP's core value: **one protocol, every OS**. Claude sees iden
 ```
 ┌──────────────────────────────────────────────┐
 │           Claude Code / MCP Client           │
-│  "Open Notepad on windows, type hello,       │
-│   then open Notes on mac and paste it"       │
+│  "Open Notepad on screen 1, type hello,      │
+│   then open Notes on screen 2 and paste it"  │
 └──────────────────┬───────────────────────────┘
                    │ MCP (stdio)
 ┌──────────────────▼───────────────────────────┐
 │          mcp_server.py (MCP bridge)          │
-│  Exposes snapshot, action, find tools        │
-│  for each connected machine                  │
+│  Screen 1 = windows, Screen 2 = mac         │
+│  Tools: snapshot, action, find, screenshot   │
 └──────┬──────────────────────────┬────────────┘
        │ WebSocket                │ WebSocket
 ┌──────▼──────┐            ┌─────▼────────────┐
@@ -25,6 +25,8 @@ This demonstrates CUP's core value: **one protocol, every OS**. Claude sees iden
 │ (UIA)       │            │ (AXUIElement)    │
 └─────────────┘            └──────────────────┘
 ```
+
+Each connected machine is a numbered **screen** (1, 2, 3...). Every tool accepts a `screen` parameter — either the number or the friendly name.
 
 ## Files
 
@@ -79,23 +81,39 @@ Add to your Claude Code MCP config:
 }
 ```
 
-Replace the paths and IPs for your setup. If you're running Claude Code on your Windows machine, `windows` can point to `localhost`.
+Replace the paths and IPs for your setup. Machines are numbered as screens (1, 2, 3...) in the order listed.
 
 ### 4. Talk to Claude
 
 Now just ask Claude Code naturally:
 
 ```
-"What apps are open on both machines?"
+"What apps are open on all screens?"
 
-"Open Notepad on windows and type 'Hello from Mac', then open TextEdit on mac and type 'Hello from Windows'"
+"Take a snapshot of screen 1"
 
-"Take a snapshot of the foreground window on mac"
+"Open Notepad on windows and type 'Hello from Mac',
+ then open TextEdit on mac and type 'Hello from Windows'"
 
-"Click the Submit button on windows"
+"Click the Submit button on screen 2"
+
+"Take a screenshot of screen 1"
 ```
 
-Claude sees the CUP tools (`snapshot_machine`, `act_on_machine`, etc.) and uses them to interact with both machines.
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_screens()` | List all connected screens with number, name, OS |
+| `snapshot(screen)` | Capture foreground window's UI tree |
+| `snapshot_app(screen, app)` | Capture a specific app by title |
+| `snapshot_desktop(screen)` | Capture desktop icons/widgets |
+| `overview(screen)` | List open windows (near-instant) |
+| `action(screen, action, ...)` | Click, type, press keys, scroll, etc. |
+| `find(screen, query/role/name/state)` | Search the last tree for elements |
+| `open_app(screen, app_name)` | Open an app by name (fuzzy match) |
+| `screenshot(screen, region_*)` | Capture a PNG screenshot |
+| `snapshot_all(scope)` | Snapshot all screens in parallel |
 
 ## Standalone Agent (alternative)
 
@@ -117,16 +135,16 @@ python agent.py windows=ws://localhost:9800 mac=ws://192.168.1.30:9800
 
 ```
 # Cross-OS text relay
-"Copy the title of the focused window on Windows and type it into the terminal on Mac"
+"Copy the title of the focused window on screen 1 and type it into the terminal on screen 2"
 
 # Parallel app launch
-"Open a text editor on both machines and type today's date in each"
+"Open a text editor on all screens and type today's date in each"
 
 # Cross-OS comparison
-"Take a snapshot of both machines and tell me what apps are running on each"
+"Snapshot all screens and tell me what apps are running on each"
 
 # Multi-step workflow
-"On Windows, open Chrome and navigate to example.com. On Mac, open Safari and navigate to the same URL."
+"On windows, open Chrome and navigate to example.com. On mac, open Safari and navigate to the same URL."
 ```
 
 ## Using the client library directly
@@ -139,6 +157,7 @@ with RemoteSession("ws://192.168.1.10:9800") as win:
     print(win.snapshot(scope="overview"))
     win.open_app("notepad")
     tree = win.snapshot(scope="foreground")
+    png = win.screenshot()  # full screen PNG bytes
 
 # Multiple machines in parallel
 with MultiSession({
@@ -163,4 +182,4 @@ The cup_server uses a simple JSON-RPC protocol over WebSocket:
 {"id": 1, "result": "# CUP 0.1.0 | windows | 1920x1080\n..."}
 ```
 
-Methods: `snapshot`, `action`, `press`, `find`, `overview`, `open_app`, `batch`, `info`
+Methods: `snapshot`, `snapshot_desktop`, `action`, `press`, `find`, `overview`, `open_app`, `screenshot`, `batch`, `info`

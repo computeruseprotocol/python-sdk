@@ -14,13 +14,15 @@ The server speaks a simple JSON-RPC-like protocol over WebSocket:
     -> {"id": 2, "method": "action", "params": {"element_id": "e5", "action": "click"}}
     <- {"id": 2, "result": {"success": true, "message": "Clicked"}}
 
-Supported methods: snapshot, action, press, find, overview, open_app, info
+Supported methods: snapshot, snapshot_desktop, action, press, find, overview,
+                   open_app, screenshot, batch, info
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import platform
 import sys
@@ -103,6 +105,26 @@ class CupRpcServer:
     def rpc_open_app(self, name: str) -> dict:
         result = self._session.open_app(name)
         return {"success": result.success, "message": result.message, "error": result.error}
+
+    def rpc_snapshot_desktop(self, compact: bool = True) -> str | dict:
+        return self._session.snapshot(scope="desktop", compact=compact)
+
+    def rpc_screenshot(
+        self,
+        region_x: int | None = None,
+        region_y: int | None = None,
+        region_w: int | None = None,
+        region_h: int | None = None,
+    ) -> dict:
+        """Capture screenshot and return as base64-encoded PNG."""
+        region = None
+        if all(v is not None for v in (region_x, region_y, region_w, region_h)):
+            region = {"x": region_x, "y": region_y, "w": region_w, "h": region_h}
+        try:
+            png_bytes = self._session.screenshot(region=region)
+            return {"success": True, "data": base64.b64encode(png_bytes).decode("ascii")}
+        except (ImportError, RuntimeError) as e:
+            return {"success": False, "error": str(e)}
 
     def rpc_batch(self, actions: list[dict]) -> list[dict]:
         results = self._session.batch(actions)
