@@ -2,7 +2,7 @@
 
 Thanks for your interest in the Computer Use Protocol! CUP is in early development (v0.1.0) and contributions are welcome.
 
-> For changes to the protocol schema, compact format spec, or role mappings, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).
+> For changes to the protocol schema, compact format spec, or role mappings, please contribute to [computeruseprotocol](https://github.com/computeruseprotocol/computeruseprotocol).
 
 ## Getting started
 

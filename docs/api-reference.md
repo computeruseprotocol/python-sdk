@@ -187,7 +187,7 @@ png_bytes = session.screenshot()
 png_bytes = session.screenshot(region={"x": 100, "y": 200, "w": 800, "h": 600})
 ```
 
-Requires: `pip install computer-use-protocol[screenshot]`
+Requires: `pip install computeruseprotocol[screenshot]`
 
 **Parameters:**
 - `region` (dict | None) — Capture region `{"x", "y", "w", "h"}` in pixels. `None` for full primary monitor.
@@ -283,7 +283,7 @@ The text format returned by `session.snapshot(compact=True)`. Optimized for LLM 
 
 Line format: `[id] role "name" @x,y wxh {states} [actions] val="value" (attrs)`
 
-Full spec: [compact.md](https://github.com/computeruseprotocol/computer-use-protocol/blob/main/schema/compact.md)
+Full spec: [compact.md](https://github.com/computeruseprotocol/computeruseprotocol/blob/main/schema/compact.md)
 
 ---
 

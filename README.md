@@ -11,26 +11,29 @@
 <br>
 
 <p align="center">
-  <a href="https://pypi.org/project/computer-use-protocol"><img src="https://img.shields.io/pypi/v/computer-use-protocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="PyPI"></a>
+  <a href="https://pypi.org/project/computeruseprotocol"><img src="https://img.shields.io/pypi/v/computeruseprotocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="PyPI"></a>
   <a href="https://github.com/computeruseprotocol/python-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0cc0df?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
-  <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
+  <a href="https://github.com/computeruseprotocol/computeruseprotocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
 </p>
 
-The official Python SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computer-use-protocol) — a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
+The official Python SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computeruseprotocol) — a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
 
 ## Installation
 
 ```bash
-pip install computer-use-protocol
+pip install computeruseprotocol
 
 # Linux additionally requires system packages
 sudo apt install python3-gi gir1.2-atspi-2.0
 
 # Web adapter (Chrome DevTools Protocol, works on any OS)
-pip install computer-use-protocol[web]
+pip install computeruseprotocol[web]
+
+# Screenshot support (mss; not needed on macOS)
+pip install computeruseprotocol[screenshot]
 
 # MCP server for AI agent integration
-pip install computer-use-protocol[mcp]
+pip install computeruseprotocol[mcp]
 ```
 
 ## Quick start
@@ -49,35 +52,39 @@ screen = cup.snapshot("full")
 envelope = cup.snapshot_raw()
 ```
 
-Output (compact format):
+Output:
 
 ```
 # CUP 0.1.0 | windows | 2560x1440
-# app: Discord
-# 87 nodes (353 before pruning)
+# app: Spotify
+# 63 nodes (280 before pruning)
 
-[e0] window "Discord" @509,62 1992x1274
-    [e1] document "General | Lechownia" @509,62 1992x1274 {readonly}
-        [e2] button "Back" @518,66 26x24 [click]
-        [e3] button "Forward" @546,66 26x24 {disabled} [click]
-        [e7] tree "Servers" @509,94 72x1242
-            [e8] treeitem "Lechownia" @513,190 64x48 {selected} [click,select]
+[e0] window "Spotify" @120,40 1680x1020
+    [e1] document "Spotify" @120,40 1680x1020
+        [e2] button "Back" @132,52 32x32 [click]
+        [e3] button "Forward" @170,52 32x32 {disabled} [click]
+        [e7] navigation "Main" @120,88 240x972
+            [e8] link "Home" @132,100 216x40 {selected} [click]
+            [e9] link "Search" @132,148 216x40 [click]
 ```
 
 ## CLI
 
 ```bash
-# Print compact tree of the foreground window
-python -m cup --foreground --compact
-
-# Save full JSON envelope
-python -m cup --json-out tree.json
+# Print the foreground window tree (default)
+python -m cup
 
 # Filter by app name
-python -m cup --app Discord --compact
+python -m cup --scope full --app Discord
+
+# Save JSON envelope to file
+python -m cup --json-out tree.json
 
 # Capture from Chrome via CDP
-python -m cup --platform web --cdp-port 9222 --compact
+python -m cup --platform web --cdp-port 9222
+
+# Include diagnostics (timing, role distribution, sizes)
+python -m cup --verbose
 ```
 
 ## Platform support
@@ -105,6 +112,8 @@ cup/
 ├── search.py                   # Semantic element search with fuzzy matching
 ├── actions/                    # Action execution layer
 │   ├── executor.py             # ActionExecutor orchestrator
+│   ├── _handler.py             # Abstract ActionHandler interface
+│   ├── _keys.py                # Key name mapping utilities
 │   ├── _windows.py             # Windows UIA actions
 │   ├── _web.py                 # Chrome CDP actions
 │   ├── _macos.py               # macOS actions (Quartz CGEvents + AX)
@@ -115,6 +124,7 @@ cup/
 │   ├── linux.py                # Linux AT-SPI2 adapter
 │   └── web.py                  # Chrome CDP adapter
 └── mcp/                        # MCP server integration
+    ├── __main__.py             # python -m cup.mcp entry point
     └── server.py               # MCP protocol server
 ```
 
@@ -147,22 +157,23 @@ Add to your MCP client config (e.g., `.mcp.json` for Claude Code):
 
 **Tools:** `snapshot`, `snapshot_app`, `overview`, `snapshot_desktop`, `find`, `action`, `open_app`, `screenshot`
 
-## Documentation
-
-- **[API Reference](docs/api-reference.md)** — Session API, actions, envelope format, MCP server
-- **[Protocol Specification](https://github.com/computeruseprotocol/computer-use-protocol)** — Schema, roles, states, actions, compact format
-
 ## Contributing
 
 CUP is in early development (v0.1.0). Contributions welcome — especially:
 
 - Android adapter (`cup/platforms/android.py`)
 - iOS adapter (`cup/platforms/ios.py`)
-- Tests and CI across platforms
+- Tests — especially cross-platform integration tests
+- Documentation and examples
 
-For protocol or schema changes, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).
+For protocol or schema changes, please contribute to [computeruseprotocol](https://github.com/computeruseprotocol/computeruseprotocol).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+
+## Documentation
+
+- **[API Reference](docs/api-reference.md)** — Session API, actions, envelope format, MCP server
+- **[Protocol Specification](https://github.com/computeruseprotocol/computeruseprotocol)** — Schema, roles, states, actions, compact format
 
 ## License
 
