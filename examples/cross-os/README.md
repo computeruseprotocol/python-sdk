@@ -8,7 +8,7 @@ This demonstrates CUP's core value: **one protocol, every OS**. Claude sees iden
 
 ```
 ┌──────────────────────────────────────────────┐
-│           Claude Code / MCP Client           │
+│           AI agent / MCP Client           │
 │  "Open Notepad on screen 1, type hello,      │
 │   then open Notes on screen 2 and paste it"  │
 └──────────────────┬───────────────────────────┘
@@ -35,7 +35,6 @@ Each connected machine is a numbered **screen** (1, 2, 3...). Every tool accepts
 | `cup_server.py` | WebSocket server wrapping `cup.Session()` — run on each machine |
 | `mcp_server.py` | MCP bridge — connects to remote cup_servers, exposes tools to Claude Code |
 | `cup_remote.py` | Client library: `RemoteSession` and `MultiSession` |
-| `agent.py` | Standalone agent (alternative to MCP — runs its own Claude loop) |
 
 ## Quick Start (MCP + Claude Code)
 
@@ -114,22 +113,6 @@ Now just ask Claude Code naturally:
 | `open_app(screen, app_name)` | Open an app by name (fuzzy match) |
 | `screenshot(screen, region_*)` | Capture a PNG screenshot |
 | `snapshot_all(scope)` | Snapshot all screens in parallel |
-
-## Standalone Agent (alternative)
-
-If you prefer a self-contained script instead of MCP:
-
-```bash
-pip install anthropic websocket-client
-
-python agent.py \
-    windows=ws://localhost:9800 \
-    mac=ws://192.168.1.30:9800 \
-    --task "Open a text editor on both machines and type today's date"
-
-# Or interactive mode
-python agent.py windows=ws://localhost:9800 mac=ws://192.168.1.30:9800
-```
 
 ## Example tasks
 
