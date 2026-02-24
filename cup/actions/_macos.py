@@ -208,6 +208,30 @@ def _get_element_center(element) -> tuple[float, float] | None:
     return x + w / 2.0, y + h / 2.0
 
 
+def _get_element_center_or_parent(element) -> tuple[float, float] | None:
+    """Get center point of an element, walking up parents if needed.
+
+    Some elements (e.g., offscreen web content nodes in Safari) don't
+    report valid bounds. This function walks up the AXParent chain to
+    find the nearest ancestor with bounds, falling back to the window
+    center as a last resort.
+    """
+    from ApplicationServices import AXUIElementCopyAttributeValue, kAXErrorSuccess
+
+    current = element
+    for _ in range(20):  # guard against infinite loops
+        center = _get_element_center(current)
+        if center is not None:
+            return center
+        # Walk up to parent
+        err, parent = AXUIElementCopyAttributeValue(current, "AXParent", None)
+        if err != kAXErrorSuccess or parent is None:
+            break
+        current = parent
+
+    return None
+
+
 def _send_mouse_click(
     x: float,
     y: float,
@@ -305,30 +329,39 @@ def _send_mouse_long_press(x: float, y: float, duration: float = 0.8) -> None:
 
 
 def _send_scroll(x: float, y: float, direction: str, amount: int = 5) -> None:
-    """Send scroll event at screen coordinates via Quartz CGEvents."""
+    """Send scroll event at screen coordinates via Quartz CGEvents.
+
+    Uses pixel-based scrolling (kCGScrollEventUnitPixel) for reliable
+    scrolling across all apps. Line-based scrolling (kCGScrollEventUnitLine)
+    is unreliable in apps like Safari where line units may be interpreted
+    as tiny or zero-pixel movements.
+    """
     from Quartz import (
         CGEventCreateScrollWheelEvent,
         CGEventPost,
         CGEventSetLocation,
         CGPointMake,
         kCGHIDEventTap,
-        kCGScrollEventUnitLine,
+        kCGScrollEventUnitPixel,
     )
 
     point = CGPointMake(x, y)
 
+    # Convert line amount to pixels (~80px per line is a reasonable default)
+    pixel_amount = amount * 80
+
     if direction == "up":
-        dy, dx = amount, 0
+        dy, dx = pixel_amount, 0
     elif direction == "down":
-        dy, dx = -amount, 0
+        dy, dx = -pixel_amount, 0
     elif direction == "left":
-        dy, dx = 0, amount
+        dy, dx = 0, pixel_amount
     elif direction == "right":
-        dy, dx = 0, -amount
+        dy, dx = 0, -pixel_amount
     else:
         dy, dx = 0, 0
 
-    event = CGEventCreateScrollWheelEvent(None, kCGScrollEventUnitLine, 2, dy, dx)
+    event = CGEventCreateScrollWheelEvent(None, kCGScrollEventUnitPixel, 2, dy, dx)
     CGEventSetLocation(event, point)
     CGEventPost(kCGHIDEventTap, event)
     time.sleep(0.02)
@@ -707,8 +740,10 @@ class MacosActionHandler(ActionHandler):
         return self._click(element)
 
     def _scroll(self, element, direction: str) -> ActionResult:
-        # Get element center for scroll target
-        center = _get_element_center(element)
+        # Get element center for scroll target, walking up parents if needed.
+        # Some elements (e.g., offscreen nodes in Safari) have no bounds,
+        # so we fall back to the nearest ancestor with valid bounds.
+        center = _get_element_center(element) or _get_element_center_or_parent(element)
         if center:
             try:
                 _send_scroll(center[0], center[1], direction)

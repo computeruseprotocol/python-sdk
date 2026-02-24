@@ -259,33 +259,67 @@ def _send_unicode_string(text: str) -> None:
     Unlike _send_key_combo which maps characters to virtual key codes
     (breaking special characters like :, /, -, .), this sends each
     character as a Unicode scan code — preserving all characters exactly.
-    """
-    inputs = []
-    for char in text:
-        code = ord(char)
-        # Key down
-        inp_down = INPUT()
-        inp_down.type = INPUT_KEYBOARD
-        inp_down._input.ki.wVk = 0
-        inp_down._input.ki.wScan = code
-        inp_down._input.ki.dwFlags = KEYEVENTF_UNICODE
-        inputs.append(inp_down)
-        # Key up
-        inp_up = INPUT()
-        inp_up.type = INPUT_KEYBOARD
-        inp_up._input.ki.wVk = 0
-        inp_up._input.ki.wScan = code
-        inp_up._input.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
-        inputs.append(inp_up)
 
+    Control characters (newlines, tabs) are sent as virtual-key presses
+    (VK_RETURN, VK_TAB) because many Windows apps — including the modern
+    Windows 11 Notepad — do not interpret these when delivered as Unicode
+    scan codes via KEYEVENTF_UNICODE.
+
+    Long strings are sent in chunks with brief pauses so the target app's
+    message queue can keep up.
+    """
+    # Normalize newlines: \r\n → \n, then standalone \r → \n.
+    # We'll emit VK_RETURN for every \n below.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Map control characters to their virtual-key codes.
+    _CONTROL_VK = {
+        "\n": 0x0D,  # VK_RETURN
+        "\t": 0x09,  # VK_TAB
+    }
+
+    inputs: list[INPUT] = []
+    for char in text:
+        vk = _CONTROL_VK.get(char)
+        if vk is not None:
+            # Send control character as a normal virtual-key press.
+            inputs.append(_make_key_input(vk, down=True))
+            inputs.append(_make_key_input(vk, down=False))
+        else:
+            code = ord(char)
+            # Key down
+            inp_down = INPUT()
+            inp_down.type = INPUT_KEYBOARD
+            inp_down._input.ki.wVk = 0
+            inp_down._input.ki.wScan = code
+            inp_down._input.ki.dwFlags = KEYEVENTF_UNICODE
+            inputs.append(inp_down)
+            # Key up
+            inp_up = INPUT()
+            inp_up.type = INPUT_KEYBOARD
+            inp_up._input.ki.wVk = 0
+            inp_up._input.ki.wScan = code
+            inp_up._input.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
+            inputs.append(inp_up)
+
+    # Send all events in a single atomic SendInput call.
+    _flush_inputs(inputs)
+
+
+def _flush_inputs(inputs: list[INPUT]) -> None:
+    """Send a batch of INPUT events via SendInput with a brief trailing pause."""
     if not inputs:
         return
-
     arr = (INPUT * len(inputs))(*inputs)
     sent = ctypes.windll.user32.SendInput(len(inputs), arr, ctypes.sizeof(INPUT))
     if sent == 0:
         err = ctypes.get_last_error()
-        raise RuntimeError(f"SendInput (unicode) failed, sent 0/{len(inputs)} events (error={err})")
+        raise RuntimeError(
+            f"SendInput (unicode) failed, sent 0/{len(inputs)} events (error={err})"
+        )
+    # Brief pause gives the target app time to process the events before
+    # the next chunk arrives.
+    time.sleep(0.01)
 
 
 # ---------------------------------------------------------------------------
@@ -477,7 +511,25 @@ class WindowsActionHandler(ActionHandler):
         )
 
     def _type(self, element, text: str) -> ActionResult:
-        """Type text via Unicode SendInput (preserves all special characters)."""
+        """Type text into an element.
+
+        Prefers ValuePattern.SetValue (instant, lossless) when available.
+        Falls back to Unicode SendInput for elements that don't expose it.
+        """
+        import comtypes
+
+        # Fast path: use ValuePattern to set text directly (no keyboard sim).
+        try:
+            pat = _get_pattern(element, UIA_ValuePatternId, _IValue)
+            if pat:
+                element.SetFocus()
+                time.sleep(0.05)
+                pat.SetValue(text)
+                return ActionResult(success=True, message=f"Typed: {text}")
+        except (comtypes.COMError, Exception):
+            pass  # fall through to SendInput
+
+        # Fallback: keyboard simulation via Unicode SendInput.
         try:
             element.SetFocus()
             time.sleep(0.05)
@@ -685,7 +737,28 @@ class WindowsActionHandler(ActionHandler):
                     error="Could not discover installed applications",
                 )
 
+            # Try matching against display names first.
             match = _fuzzy_match(name, list(apps.keys()))
+
+            # If no match on display names, try matching against AppIDs.
+            # This handles localized Windows where display names are
+            # translated (e.g. "Notatnik" for Notepad on Polish Windows)
+            # but AppIDs still contain the English name.
+            if match is None:
+                appid_to_name: dict[str, str] = {}
+                for display, appid in apps.items():
+                    # Extract a readable name from the AppID.
+                    # UWP: "Microsoft.WindowsNotepad_8wekyb3d8bbwe!App" -> "WindowsNotepad"
+                    # Path: just use the display name (already tried above).
+                    parts = appid.split(".")
+                    if len(parts) >= 2:
+                        # Take the component after "Microsoft." etc., strip the suffix
+                        raw = parts[-1].split("_")[0].split("!")[0]
+                        appid_to_name[raw.lower()] = display
+                appid_match = _fuzzy_match(name, list(appid_to_name.keys()))
+                if appid_match is not None:
+                    match = appid_to_name[appid_match]
+
             if match is None:
                 return ActionResult(
                     success=False,
@@ -847,7 +920,11 @@ class WindowsActionHandler(ActionHandler):
 
 def _run_powershell(command: str, timeout: int = 10) -> tuple[str, bool]:
     """Run a PowerShell command using base64-encoded input. Returns (output, success)."""
-    encoded = base64.b64encode(command.encode("utf-16le")).decode("ascii")
+    # Prepend a UTF-8 output-encoding directive so the stdout bytes are
+    # valid UTF-8 regardless of the system's default codepage (e.g. cp1250
+    # on Polish Windows which cannot represent many app names).
+    full_command = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " + command
+    encoded = base64.b64encode(full_command.encode("utf-16le")).decode("ascii")
     try:
         result = subprocess.run(
             [
@@ -859,8 +936,9 @@ def _run_powershell(command: str, timeout: int = 10) -> tuple[str, bool]:
                 encoded,
             ],
             capture_output=True,
-            text=True,
             timeout=timeout,
+            encoding="utf-8",
+            errors="replace",
         )
         return result.stdout or "", result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
