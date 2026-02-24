@@ -177,6 +177,7 @@ async def main(host: str, port: int) -> None:
         lambda ws: handle_client(rpc, ws),
         host,
         port,
+        ping_interval=None,  # disable keepalive pings — connections stay open indefinitely
     ):
         await asyncio.Future()  # run forever
 

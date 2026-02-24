@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from typing import Any
 
 try:
-    from websocket import WebSocket, create_connection
+    from websocket import WebSocket, WebSocketException, create_connection
 except ImportError:
     raise ImportError(
         "cup_remote requires the 'websocket-client' package.\n"
@@ -67,9 +67,26 @@ class RemoteSession:
 
     def connect(self) -> dict:
         """Connect to the remote CUP server and return its info."""
-        self._ws = create_connection(self.url, timeout=self.timeout)
+        self._ws = create_connection(
+            self.url,
+            timeout=self.timeout,
+            enable_multithread=True,
+        )
         self.info = self._call("info")
         return self.info
+
+    def _reconnect(self) -> None:
+        """Reconnect after a dropped connection."""
+        try:
+            if self._ws:
+                self._ws.close()
+        except Exception:
+            pass
+        self._ws = create_connection(
+            self.url,
+            timeout=self.timeout,
+            enable_multithread=True,
+        )
 
     def close(self) -> None:
         if self._ws:
@@ -95,19 +112,26 @@ class RemoteSession:
             raise RuntimeError("Not connected. Call .connect() first.")
 
         with self._lock:
-            self._msg_id += 1
-            msg_id = self._msg_id
+            for attempt in range(2):
+                try:
+                    self._msg_id += 1
+                    msg_id = self._msg_id
 
-            request = {"id": msg_id, "method": method, "params": params}
-            self._ws.send(json.dumps(request))
+                    request = {"id": msg_id, "method": method, "params": params}
+                    self._ws.send(json.dumps(request))
 
-            raw = self._ws.recv()
-            response = json.loads(raw)
+                    raw = self._ws.recv()
+                    response = json.loads(raw)
 
-            if "error" in response and response["error"] is not None:
-                raise RuntimeError(f"Remote error: {response['error']}")
+                    if "error" in response and response["error"] is not None:
+                        raise RuntimeError(f"Remote error: {response['error']}")
 
-            return response.get("result")
+                    return response.get("result")
+                except (ConnectionError, OSError, WebSocketException) as e:
+                    if attempt == 1:
+                        raise
+                    # Connection dropped — reconnect and retry once
+                    self._reconnect()
 
     # -- Session API (mirrors cup.Session) ----------------------------------
 
