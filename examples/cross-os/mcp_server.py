@@ -439,7 +439,7 @@ def screenshot(
     region_y: int | None = None,
     region_w: int | None = None,
     region_h: int | None = None,
-) -> Image | str:
+) -> Image:
     """Capture a screenshot from a specific screen and return it as a PNG image.
 
     By default captures the full primary monitor on the target machine.
@@ -455,31 +455,23 @@ def screenshot(
         region_w: Width of capture region in pixels.
         region_h: Height of capture region in pixels.
     """
-    try:
-        session = _resolve_screen(screen)
-    except ValueError as e:
-        return json.dumps({"success": False, "error": str(e)})
+    session = _resolve_screen(screen)
 
     region_params = [region_x, region_y, region_w, region_h]
     has_any = any(v is not None for v in region_params)
     has_all = all(v is not None for v in region_params)
 
     if has_any and not has_all:
-        return json.dumps({
-            "success": False,
-            "error": "All region parameters (region_x, region_y, region_w, region_h) "
-                     "must be provided together, or none at all.",
-        })
+        raise ValueError(
+            "All region parameters (region_x, region_y, region_w, region_h) "
+            "must be provided together, or none at all."
+        )
 
     region = None
     if has_all:
         region = {"x": region_x, "y": region_y, "w": region_w, "h": region_h}
 
-    try:
-        png_bytes = session.screenshot(region=region)
-    except (ImportError, RuntimeError) as e:
-        return json.dumps({"success": False, "error": str(e)})
-
+    png_bytes = session.screenshot(region=region)
     return Image(data=png_bytes, format="png")
 
 
