@@ -207,8 +207,7 @@ def action(
                 {
                     "success": False,
                     "message": "",
-                    "error": "press action requires the 'keys' parameter "
-                    "(e.g., keys='ctrl+s').",
+                    "error": "press action requires the 'keys' parameter (e.g., keys='ctrl+s').",
                 }
             )
         result = session.press(keys)

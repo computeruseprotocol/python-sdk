@@ -338,16 +338,18 @@ def _macos_screen_info() -> tuple[int, int, float]:
 
 # Process names that are macOS system daemons with on-screen layer-0 windows
 # but should NOT appear in user-facing app lists.
-_SYSTEM_OWNER_NAMES = frozenset({
-    "WindowServer",
-    "Dock",
-    "SystemUIServer",
-    "Control Center",
-    "Notification Center",
-    "loginwindow",
-    "Window Manager",
-    "Spotlight",
-})
+_SYSTEM_OWNER_NAMES = frozenset(
+    {
+        "WindowServer",
+        "Dock",
+        "SystemUIServer",
+        "Control Center",
+        "Notification Center",
+        "loginwindow",
+        "Window Manager",
+        "Spotlight",
+    }
+)
 
 
 def _cg_window_apps() -> dict[int, str]:
@@ -365,7 +367,8 @@ def _cg_window_apps() -> dict[int, str]:
         )
 
         cg_windows = CGWindowListCopyWindowInfo(
-            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+            kCGNullWindowID,
         )
         if not cg_windows:
             return {}
@@ -412,7 +415,8 @@ def _macos_foreground_app() -> tuple[int, str, str | None]:
         )
 
         cg_windows = CGWindowListCopyWindowInfo(
-            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+            kCGNullWindowID,
         )
         if cg_windows:
             for w in cg_windows:
@@ -428,6 +432,7 @@ def _macos_foreground_app() -> tuple[int, str, str | None]:
                 bundle_id = None
                 try:
                     from AppKit import NSRunningApplication
+
                     ns_app = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
                     if ns_app is not None:
                         owner = ns_app.localizedName() or owner

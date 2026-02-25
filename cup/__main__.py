@@ -30,11 +30,11 @@ def main() -> None:
     parser.add_argument(
         "--full-json-out", type=str, default=None, help="Write full (unpruned) CUP JSON to file"
     )
+    parser.add_argument("--compact-out", type=str, default=None, help="Write compact text to file")
     parser.add_argument(
-        "--compact-out", type=str, default=None, help="Write compact text to file"
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Print diagnostics (timing, role distribution, sizes)"
+        "--verbose",
+        action="store_true",
+        help="Print diagnostics (timing, role distribution, sizes)",
     )
     parser.add_argument(
         "--platform",

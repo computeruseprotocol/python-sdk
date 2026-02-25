@@ -454,19 +454,19 @@ class Session:
             cmd = ["screencapture", "-x"]  # -x = no sound
 
             if region is not None:
-                cmd.extend([
-                    "-R",
-                    f"{region['x']},{region['y']},{region['w']},{region['h']}",
-                ])
+                cmd.extend(
+                    [
+                        "-R",
+                        f"{region['x']},{region['y']},{region['w']},{region['h']}",
+                    ]
+                )
 
             cmd.append(tmp_path)
 
             result = subprocess.run(cmd, capture_output=True, timeout=10)
             if result.returncode != 0:
                 stderr = result.stderr.decode(errors="replace").strip()
-                raise RuntimeError(
-                    f"screencapture failed (exit {result.returncode}): {stderr}"
-                )
+                raise RuntimeError(f"screencapture failed (exit {result.returncode}): {stderr}")
 
             with open(tmp_path, "rb") as f:
                 data = f.read()
@@ -500,7 +500,8 @@ class Session:
         )
 
         windows = CGWindowListCopyWindowInfo(
-            kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+            kCGWindowListOptionOnScreenOnly,
+            kCGNullWindowID,
         )
 
         # If any window has a name, we have permission
@@ -510,6 +511,7 @@ class Session:
             # Trigger the macOS permission prompt
             try:
                 from Quartz import CGRequestScreenCaptureAccess
+
                 CGRequestScreenCaptureAccess()
             except ImportError:
                 pass

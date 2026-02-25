@@ -51,16 +51,17 @@ _XK_MAP: dict[str, int] = {
 }
 
 _XK_MODIFIERS: dict[str, int] = {
-    "ctrl": 0xFFE3,   # XK_Control_L
-    "alt": 0xFFE9,    # XK_Alt_L
+    "ctrl": 0xFFE3,  # XK_Control_L
+    "alt": 0xFFE9,  # XK_Alt_L
     "shift": 0xFFE1,  # XK_Shift_L
-    "meta": 0xFFEB,   # XK_Super_L
+    "meta": 0xFFEB,  # XK_Super_L
 }
 
 
 # ---------------------------------------------------------------------------
 # XTest keyboard/mouse input via ctypes
 # ---------------------------------------------------------------------------
+
 
 class _XTest:
     """Thin ctypes wrapper around Xlib + XTest for input simulation."""
@@ -81,9 +82,7 @@ class _XTest:
 
         libxtst_name = ctypes.util.find_library("Xtst")
         if not libxtst_name:
-            raise RuntimeError(
-                "libXtst not found. Install libxtst-dev or xorg-x11-server-utils."
-            )
+            raise RuntimeError("libXtst not found. Install libxtst-dev or xorg-x11-server-utils.")
         self._xtst = ctypes.cdll.LoadLibrary(libxtst_name)
 
         display_name = os.environ.get("DISPLAY", ":0").encode()
@@ -99,17 +98,27 @@ class _XTest:
         self._xlib.XKeysymToKeycode.restype = ctypes.c_ubyte
 
         self._xtst.XTestFakeKeyEvent.argtypes = [
-            ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong,
+            ctypes.c_void_p,
+            ctypes.c_uint,
+            ctypes.c_int,
+            ctypes.c_ulong,
         ]
         self._xtst.XTestFakeKeyEvent.restype = ctypes.c_int
 
         self._xtst.XTestFakeButtonEvent.argtypes = [
-            ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong,
+            ctypes.c_void_p,
+            ctypes.c_uint,
+            ctypes.c_int,
+            ctypes.c_ulong,
         ]
         self._xtst.XTestFakeButtonEvent.restype = ctypes.c_int
 
         self._xtst.XTestFakeMotionEvent.argtypes = [
-            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong,
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_ulong,
         ]
         self._xtst.XTestFakeMotionEvent.restype = ctypes.c_int
 
@@ -152,6 +161,7 @@ def _get_xtest() -> _XTest:
 # ---------------------------------------------------------------------------
 # Input simulation helpers
 # ---------------------------------------------------------------------------
+
 
 def _send_key_combo(combo_str: str) -> None:
     """Send a keyboard combination via XTest fake key events."""
@@ -308,6 +318,7 @@ def _send_scroll(x: int, y: int, direction: str, amount: int = 5) -> None:
 # AT-SPI2 action helpers
 # ---------------------------------------------------------------------------
 
+
 def _atspi_do_action(accessible, action_name: str) -> bool:
     """Invoke a named action on an AT-SPI2 accessible object.
 
@@ -399,6 +410,7 @@ def _atspi_get_selection_iface(accessible):
 # App launching helpers
 # ---------------------------------------------------------------------------
 
+
 def _discover_desktop_apps() -> dict[str, str]:
     """Discover installed Linux apps from .desktop files.
 
@@ -407,12 +419,8 @@ def _discover_desktop_apps() -> dict[str, str]:
     apps: dict[str, str] = {}
 
     # Standard XDG data directories
-    xdg_data_dirs = os.environ.get(
-        "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
-    ).split(":")
-    xdg_data_home = os.environ.get(
-        "XDG_DATA_HOME", os.path.expanduser("~/.local/share")
-    )
+    xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":")
+    xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
     search_dirs = [xdg_data_home] + xdg_data_dirs
 
     for data_dir in search_dirs:
@@ -488,8 +496,9 @@ def _fuzzy_match(
     substring_matches = [c for c in candidates if query_lower in c]
     if substring_matches:
         word_boundary = [
-            c for c in substring_matches
-            if re.search(r'(?:^|[\s\-_])' + re.escape(query_lower) + r'(?:$|[\s\-_])', c)
+            c
+            for c in substring_matches
+            if re.search(r"(?:^|[\s\-_])" + re.escape(query_lower) + r"(?:$|[\s\-_])", c)
         ]
         if word_boundary:
             return min(word_boundary, key=len)
@@ -615,9 +624,7 @@ class LinuxActionHandler(ActionHandler):
                 _send_mouse_click(center[0], center[1])
                 return ActionResult(success=True, message="Clicked (mouse fallback)")
             except Exception as exc:
-                return ActionResult(
-                    success=False, message="", error=f"Mouse click failed: {exc}"
-                )
+                return ActionResult(success=False, message="", error=f"Mouse click failed: {exc}")
 
         return ActionResult(
             success=False,
@@ -634,9 +641,7 @@ class LinuxActionHandler(ActionHandler):
         if _atspi_do_action(element, "click"):
             return ActionResult(success=True, message="Toggled")
 
-        return ActionResult(
-            success=False, message="", error="Element does not support toggle"
-        )
+        return ActionResult(success=False, message="", error="Element does not support toggle")
 
     def _type(self, element, text: str) -> ActionResult:
         """Type text into an element.
@@ -678,9 +683,7 @@ class LinuxActionHandler(ActionHandler):
 
             return ActionResult(success=True, message=f"Typed: {text}")
         except Exception as exc:
-            return ActionResult(
-                success=False, message="", error=f"Failed to type: {exc}"
-            )
+            return ActionResult(success=False, message="", error=f"Failed to type: {exc}")
 
     def _setvalue(self, element, text: str) -> ActionResult:
         """Set value programmatically via AT-SPI2 Value or EditableText interface."""
@@ -715,6 +718,7 @@ class LinuxActionHandler(ActionHandler):
         try:
             state_set = element.get_state_set()
             from gi.repository import Atspi
+
             if state_set.contains(Atspi.StateType.EXPANDED):
                 return ActionResult(success=True, message="Already expanded")
         except Exception:
@@ -728,15 +732,14 @@ class LinuxActionHandler(ActionHandler):
         if _atspi_do_action(element, "click") or _atspi_do_action(element, "activate"):
             return ActionResult(success=True, message="Expanded")
 
-        return ActionResult(
-            success=False, message="", error="Element does not support expand"
-        )
+        return ActionResult(success=False, message="", error="Element does not support expand")
 
     def _collapse(self, element) -> ActionResult:
         # Check if already collapsed
         try:
             state_set = element.get_state_set()
             from gi.repository import Atspi
+
             if not state_set.contains(Atspi.StateType.EXPANDED):
                 return ActionResult(success=True, message="Already collapsed")
         except Exception:
@@ -748,9 +751,7 @@ class LinuxActionHandler(ActionHandler):
         if _atspi_do_action(element, "click") or _atspi_do_action(element, "activate"):
             return ActionResult(success=True, message="Collapsed")
 
-        return ActionResult(
-            success=False, message="", error="Element does not support collapse"
-        )
+        return ActionResult(success=False, message="", error="Element does not support collapse")
 
     def _select(self, element) -> ActionResult:
         # Try Selection interface on the parent (e.g., list selects child)
@@ -780,9 +781,7 @@ class LinuxActionHandler(ActionHandler):
                 _send_scroll(center[0], center[1], direction)
                 return ActionResult(success=True, message=f"Scrolled {direction}")
             except Exception as exc:
-                return ActionResult(
-                    success=False, message="", error=f"Scroll failed: {exc}"
-                )
+                return ActionResult(success=False, message="", error=f"Scroll failed: {exc}")
 
         return ActionResult(
             success=False,
@@ -810,9 +809,7 @@ class LinuxActionHandler(ActionHandler):
             except Exception:
                 pass
 
-        return ActionResult(
-            success=False, message="", error="Element does not support increment"
-        )
+        return ActionResult(success=False, message="", error="Element does not support increment")
 
     def _decrement(self, element) -> ActionResult:
         if _atspi_do_action(element, "decrement"):
@@ -832,9 +829,7 @@ class LinuxActionHandler(ActionHandler):
             except Exception:
                 pass
 
-        return ActionResult(
-            success=False, message="", error="Element does not support decrement"
-        )
+        return ActionResult(success=False, message="", error="Element does not support decrement")
 
     def _rightclick(self, element) -> ActionResult:
         center = _get_element_center(element)
@@ -843,9 +838,7 @@ class LinuxActionHandler(ActionHandler):
                 _send_mouse_click(center[0], center[1], button="right")
                 return ActionResult(success=True, message="Right-clicked")
             except Exception as exc:
-                return ActionResult(
-                    success=False, message="", error=f"Right-click failed: {exc}"
-                )
+                return ActionResult(success=False, message="", error=f"Right-click failed: {exc}")
 
         return ActionResult(
             success=False,
@@ -860,9 +853,7 @@ class LinuxActionHandler(ActionHandler):
                 _send_mouse_click(center[0], center[1], count=2)
                 return ActionResult(success=True, message="Double-clicked")
             except Exception as exc:
-                return ActionResult(
-                    success=False, message="", error=f"Double-click failed: {exc}"
-                )
+                return ActionResult(success=False, message="", error=f"Double-click failed: {exc}")
 
         return ActionResult(
             success=False,
@@ -873,9 +864,7 @@ class LinuxActionHandler(ActionHandler):
     def _focus(self, element) -> ActionResult:
         if _atspi_grab_focus(element):
             return ActionResult(success=True, message="Focused")
-        return ActionResult(
-            success=False, message="", error="Failed to focus element"
-        )
+        return ActionResult(success=False, message="", error="Failed to focus element")
 
     def _dismiss(self, element) -> ActionResult:
         # Try AT-SPI close/dismiss action
@@ -890,9 +879,7 @@ class LinuxActionHandler(ActionHandler):
             _send_key_combo("escape")
             return ActionResult(success=True, message="Dismissed (Escape)")
         except Exception as exc:
-            return ActionResult(
-                success=False, message="", error=f"Failed to dismiss: {exc}"
-            )
+            return ActionResult(success=False, message="", error=f"Failed to dismiss: {exc}")
 
     def _longpress(self, element) -> ActionResult:
         center = _get_element_center(element)
@@ -901,9 +888,7 @@ class LinuxActionHandler(ActionHandler):
                 _send_mouse_long_press(center[0], center[1])
                 return ActionResult(success=True, message="Long-pressed")
             except Exception as exc:
-                return ActionResult(
-                    success=False, message="", error=f"Long-press failed: {exc}"
-                )
+                return ActionResult(success=False, message="", error=f"Long-press failed: {exc}")
 
         return ActionResult(
             success=False,
@@ -920,9 +905,7 @@ class LinuxActionHandler(ActionHandler):
         fuzzy-matches the name, and launches the best match.
         """
         if not name or not name.strip():
-            return ActionResult(
-                success=False, message="", error="App name must not be empty"
-            )
+            return ActionResult(success=False, message="", error="App name must not be empty")
 
         try:
             apps = _discover_desktop_apps()
@@ -986,6 +969,7 @@ class LinuxActionHandler(ActionHandler):
         """Poll AT-SPI2 desktop for a new window matching the launched app."""
         try:
             import gi
+
             gi.require_version("Atspi", "2.0")
             from gi.repository import Atspi
         except Exception:

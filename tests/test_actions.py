@@ -255,6 +255,7 @@ class TestMacosHandler:
     def test_press_works(self):
         """press should succeed (sends CGEvent)."""
         import sys
+
         if sys.platform != "darwin":
             pytest.skip("macOS-only test")
 
@@ -275,6 +276,7 @@ class TestMacosHandler:
 
     def test_open_app_no_match(self):
         import sys
+
         if sys.platform != "darwin":
             pytest.skip("macOS-only test")
 

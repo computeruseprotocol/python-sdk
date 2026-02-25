@@ -314,9 +314,7 @@ def _flush_inputs(inputs: list[INPUT]) -> None:
     sent = ctypes.windll.user32.SendInput(len(inputs), arr, ctypes.sizeof(INPUT))
     if sent == 0:
         err = ctypes.get_last_error()
-        raise RuntimeError(
-            f"SendInput (unicode) failed, sent 0/{len(inputs)} events (error={err})"
-        )
+        raise RuntimeError(f"SendInput (unicode) failed, sent 0/{len(inputs)} events (error={err})")
     # Brief pause gives the target app time to process the events before
     # the next chunk arrives.
     time.sleep(0.01)

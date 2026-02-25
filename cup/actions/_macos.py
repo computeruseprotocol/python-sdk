@@ -47,20 +47,58 @@ _VK_MAP: dict[str, int] = {
     "f11": 0x67,
     "f12": 0x6F,
     # Letters (lowercase)
-    "a": 0x00, "b": 0x0B, "c": 0x08, "d": 0x02, "e": 0x0E,
-    "f": 0x03, "g": 0x05, "h": 0x04, "i": 0x22, "j": 0x26,
-    "k": 0x28, "l": 0x25, "m": 0x2E, "n": 0x2D, "o": 0x1F,
-    "p": 0x23, "q": 0x0C, "r": 0x0F, "s": 0x01, "t": 0x11,
-    "u": 0x20, "v": 0x09, "w": 0x0D, "x": 0x07, "y": 0x10,
+    "a": 0x00,
+    "b": 0x0B,
+    "c": 0x08,
+    "d": 0x02,
+    "e": 0x0E,
+    "f": 0x03,
+    "g": 0x05,
+    "h": 0x04,
+    "i": 0x22,
+    "j": 0x26,
+    "k": 0x28,
+    "l": 0x25,
+    "m": 0x2E,
+    "n": 0x2D,
+    "o": 0x1F,
+    "p": 0x23,
+    "q": 0x0C,
+    "r": 0x0F,
+    "s": 0x01,
+    "t": 0x11,
+    "u": 0x20,
+    "v": 0x09,
+    "w": 0x0D,
+    "x": 0x07,
+    "y": 0x10,
     "z": 0x06,
     # Numbers
-    "0": 0x1D, "1": 0x12, "2": 0x13, "3": 0x14, "4": 0x15,
-    "5": 0x17, "6": 0x16, "7": 0x1A, "8": 0x1C, "9": 0x19,
+    "0": 0x1D,
+    "1": 0x12,
+    "2": 0x13,
+    "3": 0x14,
+    "4": 0x15,
+    "5": 0x17,
+    "6": 0x16,
+    "7": 0x1A,
+    "8": 0x1C,
+    "9": 0x19,
     # Punctuation / symbols
-    "-": 0x1B, "=": 0x18, "[": 0x21, "]": 0x1E, "\\": 0x2A,
-    ";": 0x29, "'": 0x27, ",": 0x2B, ".": 0x2F, "/": 0x2C,
+    "-": 0x1B,
+    "=": 0x18,
+    "[": 0x21,
+    "]": 0x1E,
+    "\\": 0x2A,
+    ";": 0x29,
+    "'": 0x27,
+    ",": 0x2B,
+    ".": 0x2F,
+    "/": 0x2C,
     "`": 0x32,
-    "minus": 0x1B, "equal": 0x18, "plus": 0x18,
+    "minus": 0x1B,
+    "equal": 0x18,
+    "plus": 0x18,
 }
 
 # Modifier flag bits for CGEventSetFlags
@@ -105,9 +143,9 @@ def _send_key_combo(combo_str: str) -> None:
     if not main_keys and mod_names:
         # Map modifier names to their virtual keycodes
         _MOD_VK: dict[str, int] = {
-            "meta": 0x37,   # kVK_Command
-            "ctrl": 0x3B,   # kVK_Control
-            "alt": 0x3A,    # kVK_Option
+            "meta": 0x37,  # kVK_Command
+            "ctrl": 0x3B,  # kVK_Control
+            "alt": 0x3A,  # kVK_Option
             "shift": 0x38,  # kVK_Shift
         }
         for m in mod_names:
@@ -169,6 +207,7 @@ def _type_string(text: str) -> None:
 # ---------------------------------------------------------------------------
 # Quartz CGEvent mouse helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_element_bounds(element) -> tuple[int, int, int, int] | None:
     """Get element bounds (x, y, w, h) from AXUIElement."""
@@ -241,17 +280,13 @@ def _send_mouse_click(
 ) -> None:
     """Send mouse click(s) at screen coordinates via Quartz CGEvents."""
     from Quartz import (
-        CGEventCreate,
         CGEventCreateMouseEvent,
         CGEventPost,
         CGEventSetIntegerValueField,
         CGPointMake,
         kCGEventLeftMouseDown,
-        kCGEventLeftMouseDragged,
         kCGEventLeftMouseUp,
         kCGEventMouseMoved,
-        kCGEventOtherMouseDown,
-        kCGEventOtherMouseUp,
         kCGEventRightMouseDown,
         kCGEventRightMouseUp,
         kCGHIDEventTap,
@@ -371,6 +406,7 @@ def _send_scroll(x: float, y: float, direction: str, amount: int = 5) -> None:
 # AXUIElement action helpers
 # ---------------------------------------------------------------------------
 
+
 def _ax_perform_action(element, action_name: str) -> bool:
     """Perform a named AX action on an element. Returns True on success."""
     from ApplicationServices import AXUIElementPerformAction, kAXErrorSuccess
@@ -435,6 +471,7 @@ def _ax_is_settable(element, attr: str) -> bool:
 # ---------------------------------------------------------------------------
 # App launching helpers
 # ---------------------------------------------------------------------------
+
 
 def _discover_apps() -> dict[str, str]:
     """Discover installed macOS apps. Returns {lowercase_name: path_or_bundle_id}."""
@@ -501,8 +538,9 @@ def _fuzzy_match(
     if substring_matches:
         # Prefer candidates where query appears as a whole word boundary
         word_boundary = [
-            c for c in substring_matches
-            if re.search(r'(?:^|[\s\-_])' + re.escape(query_lower) + r'(?:$|[\s\-_])', c)
+            c
+            for c in substring_matches
+            if re.search(r"(?:^|[\s\-_])" + re.escape(query_lower) + r"(?:$|[\s\-_])", c)
         ]
         if word_boundary:
             return min(word_boundary, key=len)
@@ -952,7 +990,10 @@ class MacosActionHandler(ActionHandler):
             # Try as bundle identifier
             return bool(
                 workspace.launchAppWithBundleIdentifier_options_additionalEventParamDescriptor_launchIdentifier_(
-                    app_path, 0, None, None,
+                    app_path,
+                    0,
+                    None,
+                    None,
                 )
             )
         except Exception:
@@ -1004,15 +1045,17 @@ class MacosActionHandler(ActionHandler):
                     pid = app.processIdentifier()
                     try:
                         from ApplicationServices import (
-                            AXUIElementCreateApplication,
                             AXUIElementCopyAttributeValue,
+                            AXUIElementCreateApplication,
                             kAXErrorSuccess,
                             kAXWindowsAttribute,
                         )
 
                         app_ref = AXUIElementCreateApplication(pid)
                         err, windows = AXUIElementCopyAttributeValue(
-                            app_ref, kAXWindowsAttribute, None,
+                            app_ref,
+                            kAXWindowsAttribute,
+                            None,
                         )
                         if err == kAXErrorSuccess and windows and len(windows) > 0:
                             return True
@@ -1028,7 +1071,8 @@ class MacosActionHandler(ActionHandler):
                 )
 
                 cg_windows = CGWindowListCopyWindowInfo(
-                    kCGWindowListOptionOnScreenOnly, kCGNullWindowID,
+                    kCGWindowListOptionOnScreenOnly,
+                    kCGNullWindowID,
                 )
                 if cg_windows:
                     for w in cg_windows:
