@@ -10,7 +10,7 @@ import copy
 import time
 from typing import Literal
 
-Detail = Literal["standard", "minimal", "full"]
+Detail = Literal["compact", "full"]
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +121,110 @@ def _count_nodes(nodes: list[dict]) -> int:
 
 
 _CHROME_ROLES = frozenset({"scrollbar", "separator", "titlebar", "tooltip", "status"})
+
+# ---------------------------------------------------------------------------
+# Vocabulary short codes — compact aliases for roles, states, and actions.
+# These reduce per-node token cost by ~50% on role/state/action strings.
+# ---------------------------------------------------------------------------
+
+ROLE_CODES: dict[str, str] = {
+    "alert": "alrt",
+    "alertdialog": "adlg",
+    "application": "app",
+    "banner": "bnr",
+    "button": "btn",
+    "cell": "cel",
+    "checkbox": "chk",
+    "columnheader": "colh",
+    "combobox": "cmb",
+    "complementary": "cmp",
+    "contentinfo": "ci",
+    "dialog": "dlg",
+    "document": "doc",
+    "form": "frm",
+    "generic": "gen",
+    "grid": "grd",
+    "group": "grp",
+    "heading": "hdg",
+    "img": "img",
+    "link": "lnk",
+    "list": "lst",
+    "listitem": "li",
+    "log": "log",
+    "main": "main",
+    "marquee": "mrq",
+    "menu": "mnu",
+    "menubar": "mnub",
+    "menuitem": "mi",
+    "menuitemcheckbox": "mic",
+    "menuitemradio": "mir",
+    "navigation": "nav",
+    "none": "none",
+    "option": "opt",
+    "progressbar": "pbar",
+    "radio": "rad",
+    "region": "rgn",
+    "row": "row",
+    "rowheader": "rowh",
+    "scrollbar": "sb",
+    "search": "srch",
+    "searchbox": "sbx",
+    "separator": "sep",
+    "slider": "sld",
+    "spinbutton": "spn",
+    "status": "sts",
+    "switch": "sw",
+    "tab": "tab",
+    "table": "tbl",
+    "tablist": "tabs",
+    "tabpanel": "tpnl",
+    "text": "txt",
+    "textbox": "tbx",
+    "timer": "tmr",
+    "titlebar": "ttlb",
+    "toolbar": "tlbr",
+    "tooltip": "ttp",
+    "tree": "tre",
+    "treeitem": "ti",
+    "window": "win",
+}
+
+STATE_CODES: dict[str, str] = {
+    "busy": "bsy",
+    "checked": "chk",
+    "collapsed": "col",
+    "disabled": "dis",
+    "editable": "edt",
+    "expanded": "exp",
+    "focused": "foc",
+    "hidden": "hid",
+    "mixed": "mix",
+    "modal": "mod",
+    "multiselectable": "msel",
+    "offscreen": "off",
+    "pressed": "prs",
+    "readonly": "ro",
+    "required": "req",
+    "selected": "sel",
+}
+
+ACTION_CODES: dict[str, str] = {
+    "click": "clk",
+    "collapse": "col",
+    "decrement": "dec",
+    "dismiss": "dsm",
+    "doubleclick": "dbl",
+    "expand": "exp",
+    "focus": "foc",
+    "increment": "inc",
+    "longpress": "lp",
+    "rightclick": "rclk",
+    "scroll": "scr",
+    "select": "sel",
+    "setvalue": "sv",
+    "toggle": "tog",
+    "type": "typ",
+}
 
 
 def _should_skip(node: dict, parent: dict | None, siblings: int) -> bool:
@@ -346,35 +450,10 @@ def _has_meaningful_actions(node: dict) -> bool:
     return any(a != "focus" for a in actions)
 
 
-def _prune_minimal_node(node: dict) -> dict | None:
-    """Minimal pruning: keep only nodes with meaningful actions + ancestors.
-
-    Returns a pruned copy of the node if it or any descendant has meaningful
-    actions, or None if the entire subtree can be dropped.
-    """
-    children = node.get("children", [])
-
-    # Recursively prune children first
-    kept_children = []
-    for child in children:
-        pruned_child = _prune_minimal_node(child)
-        if pruned_child is not None:
-            kept_children.append(pruned_child)
-
-    # Keep this node if it has meaningful actions OR if any child was kept
-    if _has_meaningful_actions(node) or kept_children:
-        pruned = {k: v for k, v in node.items() if k != "children"}
-        if kept_children:
-            pruned["children"] = kept_children
-        return pruned
-
-    return None
-
-
 def prune_tree(
     tree: list[dict],
     *,
-    detail: Detail = "standard",
+    detail: Detail = "compact",
     screen: dict | None = None,
 ) -> list[dict]:
     """Apply pruning to a CUP tree, returning a new pruned tree.
@@ -382,12 +461,9 @@ def prune_tree(
     Args:
         tree: List of root CUP node dicts.
         detail: Pruning level:
-            "standard" — Remove unnamed generics, decorative images, empty
-                         text, offscreen noise, etc. (default)
-            "minimal"  — Keep only nodes with meaningful actions (not just
-                         focus) and their ancestors. Dramatically reduces
-                         token count.
-            "full"     — No pruning; return every node from the raw tree.
+            "compact" — Remove unnamed generics, decorative images, empty
+                        text, offscreen noise, etc. (default)
+            "full"    — No pruning; return every node from the raw tree.
         screen: Screen dimensions dict with "w" and "h" keys. When provided,
                 elements entirely outside the screen bounds are clipped even
                 if no scrollable ancestor is present.
@@ -395,15 +471,7 @@ def prune_tree(
     if detail == "full":
         return copy.deepcopy(tree)
 
-    if detail == "minimal":
-        result = []
-        for root in tree:
-            pruned = _prune_minimal_node(root)
-            if pruned is not None:
-                result.append(pruned)
-        return result
-
-    # "standard" — use screen as baseline viewport so elements far offscreen
+    # "compact" — use screen as baseline viewport so elements far offscreen
     # (e.g. in web-based apps with virtual scroll) are clipped even when no
     # ancestor exposes the "scroll" action.
     screen_viewport = None
@@ -417,7 +485,8 @@ def prune_tree(
 
 def _format_line(node: dict) -> str:
     """Format a single CUP node as a compact one-liner."""
-    parts = [f"[{node['id']}]", node["role"]]
+    role = node["role"]
+    parts = [f"[{node['id']}]", ROLE_CODES.get(role, role)]
 
     name = node.get("name", "")
     if name:
@@ -426,22 +495,26 @@ def _format_line(node: dict) -> str:
         truncated = truncated.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         parts.append(f'"{truncated}"')
 
+    # Actions (drop "focus" -- it's noise)
+    actions = [a for a in node.get("actions", []) if a != "focus"]
+
+    # Only include bounds for interactable nodes (nodes with meaningful actions).
+    # Non-interactable nodes are context-only — agents reference them by ID, not
+    # by coordinates, so spatial info adds tokens without value.
     bounds = node.get("bounds")
-    if bounds:
-        parts.append(f"@{bounds['x']},{bounds['y']} {bounds['w']}x{bounds['h']}")
+    if bounds and actions:
+        parts.append(f"{bounds['x']},{bounds['y']} {bounds['w']}x{bounds['h']}")
 
     states = node.get("states", [])
     if states:
-        parts.append("{" + ",".join(states) + "}")
+        parts.append("{" + ",".join(STATE_CODES.get(s, s) for s in states) + "}")
 
-    # Actions (drop "focus" -- it's noise)
-    actions = [a for a in node.get("actions", []) if a != "focus"]
     if actions:
-        parts.append("[" + ",".join(actions) + "]")
+        parts.append("[" + ",".join(ACTION_CODES.get(a, a) for a in actions) + "]")
 
     # Value for input-type elements
     value = node.get("value", "")
-    if value and node["role"] in ("textbox", "searchbox", "combobox", "spinbutton", "slider"):
+    if value and role in ("textbox", "searchbox", "combobox", "spinbutton", "slider"):
         truncated_val = value[:120] + ("..." if len(value) > 120 else "")
         truncated_val = truncated_val.replace('"', '\\"').replace("\n", " ")
         parts.append(f'val="{truncated_val}"')
@@ -513,7 +586,7 @@ def serialize_compact(
     envelope: dict,
     *,
     window_list: list[dict] | None = None,
-    detail: Detail = "standard",
+    detail: Detail = "compact",
     max_chars: int = MAX_OUTPUT_CHARS,
 ) -> str:
     """Serialize a CUP envelope to compact LLM-friendly text.
@@ -526,7 +599,7 @@ def serialize_compact(
         envelope: CUP envelope dict with tree data.
         window_list: Optional list of open windows to include in header
                      for situational awareness (used by foreground scope).
-        detail: Pruning level ("standard", "minimal", or "full").
+        detail: Pruning level ("compact" or "full").
         max_chars: Hard character limit for output. When exceeded, the
                    output is truncated with a diagnostic message.
     """

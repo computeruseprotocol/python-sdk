@@ -86,7 +86,7 @@ def snapshot() -> str:
         scope="foreground",
         max_depth=999,
         compact=True,
-        detail="standard",
+        detail="compact",
     )
 
 
@@ -114,7 +114,7 @@ def snapshot_app(app: str) -> str:
         app=app,
         max_depth=999,
         compact=True,
-        detail="standard",
+        detail="compact",
     )
 
 
@@ -134,7 +134,7 @@ def snapshot_desktop() -> str:
         scope="desktop",
         max_depth=999,
         compact=True,
-        detail="standard",
+        detail="compact",
     )
 
 

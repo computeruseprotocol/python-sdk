@@ -142,7 +142,7 @@ class Session:
         app: str | None = None,
         max_depth: int = 999,
         compact: bool = True,
-        detail: Detail = "standard",
+        detail: Detail = "compact",
     ) -> str | dict:
         """Capture the accessibility tree.
 
@@ -156,7 +156,7 @@ class Session:
             max_depth: Maximum tree depth.
             compact: If True, return compact LLM text; if False, return
                      the full CUP envelope dict.
-            detail: Pruning level ("standard", "minimal", or "full").
+            detail: Pruning level ("compact" or "full").
 
         Returns:
             Compact text string or CUP envelope dict.

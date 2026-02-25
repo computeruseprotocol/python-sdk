@@ -269,7 +269,7 @@ class TestSerializeCompact:
         )
         text = serialize_compact(env)
         # focus action should be dropped
-        assert '[e0] button "Submit" @100,200 80x30 {focused} [click]' in text
+        assert '[e0] btn "Submit" 100,200 80x30 {foc} [clk]' in text
 
     def test_indentation(self):
         env = _make_envelope(
@@ -304,8 +304,8 @@ class TestSerializeCompact:
             ]
         )
         text = serialize_compact(env)
-        assert "generic" not in text
-        assert "[e1] button" in text
+        assert "gen" not in text
+        assert "[e1] btn" in text
 
     def test_node_count_header(self):
         env = _make_envelope(
@@ -532,8 +532,8 @@ class TestDetailPruning:
         assert pruned[0]["role"] == "generic"
         assert len(pruned[0]["children"]) == 1
 
-    def test_detail_standard_prunes_generics(self):
-        """detail='standard' (default) should hoist unnamed generics."""
+    def test_detail_compact_prunes_generics(self):
+        """detail='compact' (default) should hoist unnamed generics."""
         tree = [
             _make_node(
                 "e0",
@@ -544,68 +544,9 @@ class TestDetailPruning:
                 ],
             )
         ]
-        pruned = prune_tree(tree, detail="standard")
+        pruned = prune_tree(tree, detail="compact")
         assert len(pruned) == 1
         assert pruned[0]["role"] == "button"
-
-    def test_detail_minimal_keeps_only_interactive(self):
-        """detail='minimal' should keep only nodes with meaningful actions."""
-        tree = [
-            _make_node(
-                "e0",
-                "window",
-                "App",
-                children=[
-                    _make_node("e1", "heading", "Title"),
-                    _make_node("e2", "text", "Some description"),
-                    _make_node("e3", "button", "Submit", actions=["click"]),
-                    _make_node("e4", "textbox", "Email", actions=["type", "setvalue"]),
-                    _make_node("e5", "group", "Footer", actions=["focus"]),
-                ],
-            )
-        ]
-        pruned = prune_tree(tree, detail="minimal")
-        assert len(pruned) == 1  # window kept as ancestor
-        window = pruned[0]
-        children = window.get("children", [])
-        child_roles = [c["role"] for c in children]
-        assert "button" in child_roles
-        assert "textbox" in child_roles
-        # heading, text, and focus-only group should be dropped
-        assert "heading" not in child_roles
-        assert "text" not in child_roles
-        assert "group" not in child_roles
-
-    def test_detail_minimal_preserves_ancestors(self):
-        """detail='minimal' should keep ancestors of interactive nodes."""
-        tree = [
-            _make_node(
-                "e0",
-                "window",
-                "App",
-                children=[
-                    _make_node(
-                        "e1",
-                        "toolbar",
-                        "Main",
-                        children=[
-                            _make_node("e2", "button", "Save", actions=["click"]),
-                        ],
-                    ),
-                    _make_node("e3", "heading", "Title"),
-                ],
-            )
-        ]
-        pruned = prune_tree(tree, detail="minimal")
-        assert len(pruned) == 1
-        window = pruned[0]
-        assert window["role"] == "window"
-        children = window.get("children", [])
-        assert len(children) == 1  # only toolbar kept (has interactive descendant)
-        toolbar = children[0]
-        assert toolbar["role"] == "toolbar"
-        assert len(toolbar["children"]) == 1
-        assert toolbar["children"][0]["role"] == "button"
 
     def test_detail_full_returns_deep_copy(self):
         """detail='full' should return a deep copy, not modify original."""
@@ -638,7 +579,7 @@ class TestPruneEdgeCases:
         node_line = [l for l in text.split("\n") if "[e0]" in l][0]
         assert "[focus]" not in node_line
         # No action brackets at all
-        assert "[click" not in node_line
+        assert "[clk" not in node_line
 
     def test_offscreen_interactive_named_kept(self):
         """Offscreen elements with both name and actions should be preserved."""
@@ -666,9 +607,9 @@ class TestPruneEdgeCases:
         names = [n["name"] for n in pruned]
         assert names == ["A", "B", "C"]
 
-    def test_minimal_pruning_empty_tree(self):
-        """Minimal pruning on empty tree returns empty."""
-        pruned = prune_tree([], detail="minimal")
+    def test_compact_pruning_empty_tree(self):
+        """Compact pruning on empty tree returns empty."""
+        pruned = prune_tree([], detail="compact")
         assert pruned == []
 
     def test_compact_attributes_heading_level(self):
