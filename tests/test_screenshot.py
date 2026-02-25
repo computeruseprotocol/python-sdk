@@ -8,6 +8,11 @@ import pytest
 class TestScreenshotImportError:
     def test_error_mentions_install_command(self):
         """When mss is missing, ImportError should tell the user how to install."""
+        import sys
+
+        if sys.platform == "darwin":
+            pytest.skip("macOS uses screencapture, not mss")
+
         import builtins
 
         original_import = builtins.__import__

@@ -84,3 +84,17 @@ ignore_missing_imports = true
 # capture() returns str | dict depending on compact flag — union narrowing
 # causes false positives at every call site. Suppress until overloads are added.
 disable_error_code = ["return-value", "assignment", "arg-type", "no-any-return"]
+
+# Platform-specific modules use ctypes.windll / pyobjc / gi which only
+# exist on their respective OS. Skip type-checking them cross-platform.
+[[tool.mypy.overrides]]
+module = ["cup.platforms.windows", "cup.actions._windows"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["cup.platforms.macos", "cup.actions._macos"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["cup.platforms.linux", "cup.actions._linux"]
+ignore_errors = true
