@@ -8,12 +8,11 @@
   Python SDK for the Computer Use Protocol
 </p>
 
-<br>
-
 <p align="center">
-  <a href="https://pypi.org/project/computeruseprotocol"><img src="https://img.shields.io/pypi/v/computeruseprotocol?style=for-the-badge&color=FF6F61&labelColor=000000&v=1" alt="PyPI"></a>
-  <a href="https://github.com/computeruseprotocol/python-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0cc0df?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
-  <a href="https://github.com/computeruseprotocol/computeruseprotocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
+  <a href="https://pypi.org/project/computeruseprotocol/"><img src="https://img.shields.io/pypi/v/computeruseprotocol" alt="PyPI version"></a>
+  <a href="https://www.npmjs.com/package/computeruseprotocol"><img src="https://img.shields.io/npm/v/computeruseprotocol" alt="npm version"></a>
+  <a href="https://github.com/computeruseprotocol/python-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+  <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/spec-computer--use--protocol-green" alt="Spec"></a>
 </p>
 
 The official Python SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computeruseprotocol) — a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
