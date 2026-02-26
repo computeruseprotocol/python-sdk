@@ -68,7 +68,7 @@ def _cdp_connect(ws_url: str, host: str | None = None) -> websocket.WebSocket:
         ws_url = urlunparse(parts._replace(netloc=f"{host}:{parts.port}"))
     ws = websocket.WebSocket()
     ws.settimeout(30)
-    ws.connect(ws_url)
+    ws.connect(ws_url, suppress_origin=True)
     return ws
 
 
