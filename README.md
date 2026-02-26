@@ -15,6 +15,8 @@
   <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/spec-computer--use--protocol-green" alt="Spec"></a>
 </p>
 
+---
+
 The official Python SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computeruseprotocol) — a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
 
 ## Installation
