@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>Python SDK for the Computer Use Protocol</b>
+  Python SDK for the Computer Use Protocol
 </p>
 
 <br>
