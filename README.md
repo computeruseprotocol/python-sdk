@@ -10,7 +10,6 @@
 
 <p align="center">
   <a href="https://pypi.org/project/computeruseprotocol/"><img src="https://img.shields.io/pypi/v/computeruseprotocol" alt="PyPI version"></a>
-  <a href="https://www.npmjs.com/package/computeruseprotocol"><img src="https://img.shields.io/npm/v/computeruseprotocol" alt="npm version"></a>
   <a href="https://github.com/computeruseprotocol/python-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
   <a href="https://github.com/computeruseprotocol/computeruseprotocol"><img src="https://img.shields.io/badge/spec-computeruseprotocol-green" alt="Spec"></a>
 </p>
