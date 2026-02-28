@@ -520,8 +520,11 @@ class WindowsActionHandler(ActionHandler):
         try:
             pat = _get_pattern(element, UIA_ValuePatternId, _IValue)
             if pat:
-                element.SetFocus()
-                time.sleep(0.05)
+                try:
+                    element.SetFocus()
+                    time.sleep(0.05)
+                except (comtypes.COMError, Exception):
+                    pass  # element may already be focused
                 pat.SetValue(text)
                 return ActionResult(success=True, message=f"Typed: {text}")
         except (comtypes.COMError, Exception):
@@ -529,8 +532,11 @@ class WindowsActionHandler(ActionHandler):
 
         # Fallback: keyboard simulation via Unicode SendInput.
         try:
-            element.SetFocus()
-            time.sleep(0.05)
+            try:
+                element.SetFocus()
+                time.sleep(0.05)
+            except (comtypes.COMError, Exception):
+                pass  # element may already be focused
             _send_key_combo("ctrl+a")
             time.sleep(0.05)
             _send_unicode_string(text)
