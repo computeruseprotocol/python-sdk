@@ -177,6 +177,26 @@ results = session.batch([
 
 ---
 
+### session.page()
+
+Page through clipped content in a scrollable container. Serves slices of the cached raw tree — no UI scrolling needed.
+
+```python
+page1 = session.page("e5", direction="down")
+page2 = session.page("e5", direction="down")
+page3 = session.page("e5", offset=0, limit=10)
+```
+
+**Parameters:**
+- `element_id` (str) — Scrollable container element ID (e.g., `"e5"`).
+- `direction` (str | None) — `"up"`, `"down"`, `"left"`, or `"right"` to advance or retreat one page.
+- `offset` (int | None) — Jump to a specific child index (overrides direction).
+- `limit` (int | None) — Override page size (default: match visible child count).
+
+**Returns:** `str` (compact text with the requested page of children).
+
+---
+
 ### session.screenshot()
 
 Capture a screenshot as PNG bytes.
@@ -254,7 +274,7 @@ Each node in the tree:
 }
 ```
 
-**Roles:** 54 ARIA-derived roles. See [schema/mappings.json](../schema/mappings.json) for the full list and per-platform mappings.
+**Roles:** 59 ARIA-derived roles. See [schema/mappings.json](../schema/mappings.json) for the full list and per-platform mappings.
 
 **States:** `busy`, `checked`, `collapsed`, `disabled`, `editable`, `expanded`, `focused`, `hidden`, `mixed`, `modal`, `multiselectable`, `offscreen`, `pressed`, `readonly`, `required`, `selected`
 
@@ -307,6 +327,7 @@ python -m cup.mcp
 | `overview()` | Window list only (near-instant) |
 | `snapshot_desktop()` | Desktop surface (icons, widgets) |
 | `find(query, role, name, state)` | Search last tree |
+| `page(element_id, direction, offset, limit)` | Page through clipped content |
 | `action(action, element_id, ...)` | Perform action on element |
 | `open_app(name)` | Open app by name |
 | `screenshot(region)` | Capture screenshot |
