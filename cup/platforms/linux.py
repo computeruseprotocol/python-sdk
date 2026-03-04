@@ -9,7 +9,7 @@ Key design choices:
   2. Batch-reads core properties per node (role, name, description, states,
      bounds, attributes, actions, value) in a single walk pass
   3. Xlib (via ctypes) for screen info and foreground window detection
-  4. Parallel tree walking with ThreadPoolExecutor for multi-window captures
+  4. Sequential tree walking for multi-window captures (AT-SPI2 is not thread-safe)
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import ctypes.util
 import itertools
 import os
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from cup._base import PlatformAdapter
@@ -284,6 +283,15 @@ def _init_atspi():
     import gi
 
     gi.require_version("Atspi", "2.0")
+
+    # Initialize GLib threading support before any D-Bus calls.
+    # AT-SPI2 communicates over D-Bus (GLib-based); without this,
+    # get_desktop() can segfault — especially on Python 3.14+.
+    from gi.repository import GLib
+
+    if hasattr(GLib, "threads_init"):
+        GLib.threads_init()
+
     from gi.repository import Atspi
 
     # Event listeners are not needed — we only read the tree.
@@ -942,73 +950,27 @@ class LinuxAdapter(PlatformAdapter):
         self.initialize()
         refs: dict[str, Any] = {}
 
-        if len(windows) <= 1:
-            # Single window — sequential walk
-            id_gen = itertools.count()
-            stats: dict = {"nodes": 0, "max_depth": 0, "roles": {}}
-            tree: list[dict] = []
-            for win in windows:
-                node = _build_cup_node(
-                    win["handle"],
-                    id_gen,
-                    stats,
-                    0,
-                    max_depth,
-                    self._screen_w,
-                    self._screen_h,
-                    refs,
-                )
-                if node is not None:
-                    tree.append(node)
-            return tree, stats, refs
-        else:
-            # Multiple windows — parallel walk with merged stats
-            return self._parallel_capture(windows, max_depth=max_depth, refs=refs)
-
-    def _parallel_capture(
-        self,
-        windows: list[dict[str, Any]],
-        *,
-        max_depth: int = 999,
-        refs: dict[str, Any],
-    ) -> tuple[list[dict], dict, dict[str, Any]]:
-        """Walk multiple window trees in parallel threads."""
-        # Shared counter for globally unique IDs
+        # AT-SPI2 D-Bus calls are not thread-safe — always walk sequentially.
+        # (Previously used ThreadPoolExecutor for multi-window, but that caused
+        # segfaults because GObject/D-Bus proxies aren't safe across threads.)
         id_gen = itertools.count()
-        num_workers = min(len(windows), 8)
-
-        per_window_results: list[tuple[dict | None, dict]] = [(None, {}) for _ in windows]
-
-        def walk_one(idx: int):
-            win = windows[idx]
-            local_stats: dict = {"nodes": 0, "max_depth": 0, "roles": {}}
+        stats: dict = {"nodes": 0, "max_depth": 0, "roles": {}}
+        tree: list[dict] = []
+        for win in windows:
             node = _build_cup_node(
                 win["handle"],
                 id_gen,
-                local_stats,
+                stats,
                 0,
                 max_depth,
                 self._screen_w,
                 self._screen_h,
                 refs,
             )
-            per_window_results[idx] = (node, local_stats)
-
-        with ThreadPoolExecutor(max_workers=num_workers) as pool:
-            list(pool.map(walk_one, range(len(windows))))
-
-        # Merge results
-        tree: list[dict] = []
-        merged_stats: dict = {"nodes": 0, "max_depth": 0, "roles": {}}
-        for node, st in per_window_results:
             if node is not None:
                 tree.append(node)
-            merged_stats["nodes"] += st.get("nodes", 0)
-            merged_stats["max_depth"] = max(merged_stats["max_depth"], st.get("max_depth", 0))
-            for role, count in st.get("roles", {}).items():
-                merged_stats["roles"][role] = merged_stats["roles"].get(role, 0) + count
+        return tree, stats, refs
 
-        return tree, merged_stats, refs
 
 
 # ---------------------------------------------------------------------------
